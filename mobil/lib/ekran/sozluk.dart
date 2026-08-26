@@ -120,7 +120,7 @@ class _SozlukDurum extends State<SozlukEkran> {
                         onChanged: (v) => setState(() => _arama = v.trim()),
                         style: Theme.of(c).textTheme.bodyMedium,
                         decoration: InputDecoration(
-                          hintText: 'Terim ya da sütun ara — GG60, ATR, Sharpe',
+                          hintText: 'Terim ya da sütun ara',
                           prefixIcon: const Icon(Icons.search_sharp, size: 19),
                           suffixIcon: _arama.isEmpty
                               ? null
@@ -159,63 +159,46 @@ class _SozlukDurum extends State<SozlukEkran> {
                               alt: 'Sütun adıyla da arayabilirsin: '
                                   'ATR_yuzde, DON_ust, GG60')
                           : ListView(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                              // Yatay dolgu çocuklarda: bölüm başlığı
+                              // uygulamanın Baslik bileşeni ve kendi
+                              // dolgusunu taşıyor (bkz. bugun.dart).
+                              padding: const EdgeInsets.only(bottom: 28),
                               children: [
-                                if (_arama.isEmpty) ...[
-                                  Not(
-                                    'Ekranlarda geçen her terimin karşılığı burada. '
-                                    'Bir terim merak uyandırırsa altındaki ders '
-                                    'düğmesi tam o konuyu anlatıyor.',
-                                    ikon: Icons.menu_book_sharp,
-                                    renk: sem.aksan,
+                                if (_arama.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 4, 16, 0),
+                                    child: Not(
+                                      'Ekranlarda geçen her terimin karşılığı '
+                                      'burada. Bir terim merak uyandırırsa '
+                                      'altındaki ders düğmesi tam o konuyu '
+                                      'anlatıyor.',
+                                      ikon: Icons.menu_book_sharp,
+                                      renk: sem.aksan,
+                                    ),
                                   ),
-                                  const SizedBox(height: 14),
-                                ],
                                 for (final g in gruplar) ...[
-                                  _BolumBasligi(g.key, adet: g.value.length),
+                                  Baslik(
+                                    '${g.key['ad']}',
+                                    alt: '${g.key['aciklama']}',
+                                    sag: Text('${g.value.length}',
+                                        style: Theme.of(c)
+                                            .textTheme
+                                            .labelSmall),
+                                  ),
                                   for (final t in g.value)
-                                    _TerimKutusu(t, acik: _arama.isNotEmpty),
-                                  const SizedBox(height: 10),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16),
+                                      child: _TerimKutusu(
+                                          t, acik: _arama.isNotEmpty),
+                                    ),
                                 ],
                               ],
                             ),
                     ),
                   ],
                 ),
-    );
-  }
-}
-
-class _BolumBasligi extends StatelessWidget {
-  final Map<String, dynamic> bolum;
-  final int adet;
-  const _BolumBasligi(this.bolum, {required this.adet});
-
-  @override
-  Widget build(BuildContext c) {
-    final sem = Sem(c);
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('${bolum['ad']}'.toUpperCase(),
-                    style: Theme.of(c).textTheme.labelSmall
-                        ?.copyWith(color: sem.aksan, letterSpacing: 1.2)),
-              ),
-              Text('$adet',
-                  style: Theme.of(c).textTheme.labelSmall),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('${bolum['aciklama']}',
-              style: Theme.of(c).textTheme.bodySmall
-                  ?.copyWith(color: Renk.metinSolgun, height: 1.5)),
-        ],
-      ),
     );
   }
 }

@@ -166,14 +166,34 @@ class _HesapDurum extends State<HesapEkran> {
           ikon: Icons.cloud_done_sharp, renk: sem.aksan,
         ),
         const SizedBox(height: 14),
-        _Dugme('Şimdi yedekle', Icons.cloud_upload_sharp,
-            _mesgul ? null : _yedekle),
+        // Düğme hiyerarşisi temadan geliyor: dolu = birincil eylem,
+        // çerçeveli = ikincil, düz = geri dönüşü olan/kaçış. Önceden üçü
+        // de aynı kutu satırıydı ve hangisinin ana eylem olduğu
+        // görünmüyordu.
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _mesgul ? null : _yedekle,
+            icon: const Icon(Icons.cloud_upload_sharp, size: 18),
+            label: const Text('ŞİMDİ YEDEKLE'),
+          ),
+        ),
         const SizedBox(height: 9),
-        _Dugme('Buluttan geri yükle', Icons.cloud_download_sharp,
-            _mesgul ? null : _geriYukle),
-        const SizedBox(height: 9),
-        _Dugme('Çıkış yap', Icons.logout_sharp,
-            _mesgul ? null : () => _calistir(hesap.cikis)),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _mesgul ? null : _geriYukle,
+            icon: const Icon(Icons.cloud_download_sharp, size: 18),
+            label: const Text('BULUTTAN GERİ YÜKLE'),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Center(
+          child: TextButton(
+            onPressed: _mesgul ? null : () => _calistir(hesap.cikis),
+            child: const Text('Çıkış yap'),
+          ),
+        ),
         const SizedBox(height: 18),
         Text(
           'Yedeklenenler: portföy, tezler, karar defteri, sermaye defteri, '
@@ -197,52 +217,46 @@ class _HesapDurum extends State<HesapEkran> {
           ikon: Icons.cloud_sharp, renk: sem.aksan,
         ),
         const SizedBox(height: 14),
-        Kutu(
-          child: Column(
-            children: [
-              TextField(
-                controller: _eposta,
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                style: Theme.of(c).textTheme.bodyMedium,
-                decoration: _alan('E-posta'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _parola,
-                obscureText: true,
-                style: Theme.of(c).textTheme.bodyMedium,
-                decoration: _alan(_kayitModu
-                    ? 'Parola (en az 8 karakter)'
-                    : 'Parola'),
-                onSubmitted: (_) => _mesgul ? null : _girisYap(),
-              ),
-            ],
+        // Alanlar Kutu İÇİNDE değil: kutunun kendi kenarlığı ile alanın
+        // kenarlığı iç içe iki çerçeve yapıyordu ve form gereğinden ağır
+        // görünüyordu.
+        TextField(
+          controller: _eposta,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          style: Theme.of(c).textTheme.bodyMedium,
+          decoration: const InputDecoration(labelText: 'E-posta'),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _parola,
+          obscureText: true,
+          style: Theme.of(c).textTheme.bodyMedium,
+          decoration: InputDecoration(
+              labelText:
+                  _kayitModu ? 'Parola (en az 8 karakter)' : 'Parola'),
+          onSubmitted: (_) => _mesgul ? null : _girisYap(),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _mesgul ? null : _girisYap,
+            child: Text(_kayitModu ? 'HESAP AÇ' : 'GİRİŞ YAP'),
           ),
         ),
-        const SizedBox(height: 12),
-        _Dugme(_kayitModu ? 'Hesap aç' : 'Giriş yap',
-            _kayitModu ? Icons.person_add_sharp : Icons.login_sharp,
-            _mesgul ? null : _girisYap, vurgulu: true),
-        const SizedBox(height: 9),
-        TextButton(
-          onPressed: _mesgul
-              ? null
-              : () => setState(() { _kayitModu = !_kayitModu; _hata = null; }),
-          child: Text(_kayitModu
-              ? 'Zaten hesabım var — giriş yap'
-              : 'Hesabım yok — yeni hesap aç'),
+        const SizedBox(height: 4),
+        Center(
+          child: TextButton(
+            onPressed: _mesgul
+                ? null
+                : () => setState(() { _kayitModu = !_kayitModu; _hata = null; }),
+            child: Text(_kayitModu
+                ? 'Zaten hesabım var — giriş yap'
+                : 'Hesabım yok — yeni hesap aç'),
+          ),
         ),
       ];
-
-  InputDecoration _alan(String etiket) => InputDecoration(
-        labelText: etiket,
-        isDense: true,
-        border: const OutlineInputBorder(
-            borderRadius: kose, borderSide: BorderSide(color: Renk.cizgi)),
-        enabledBorder: const OutlineInputBorder(
-            borderRadius: kose, borderSide: BorderSide(color: Renk.cizgi)),
-      );
 
   static String _zaman(String? iso) {
     if (iso == null || iso.isEmpty) return 'henüz yok';
@@ -250,31 +264,6 @@ class _HesapDurum extends State<HesapEkran> {
     if (t == null) return iso;
     String i(int n) => n.toString().padLeft(2, '0');
     return '${i(t.day)}.${i(t.month)}.${t.year}  ${i(t.hour)}:${i(t.minute)}';
-  }
-}
-
-class _Dugme extends StatelessWidget {
-  final String metin;
-  final IconData ikon;
-  final VoidCallback? tikla;
-  final bool vurgulu;
-  const _Dugme(this.metin, this.ikon, this.tikla, {this.vurgulu = false});
-
-  @override
-  Widget build(BuildContext c) {
-    final sem = Sem(c);
-    final renk = tikla == null
-        ? Renk.metinSonuk
-        : (vurgulu ? sem.aksan : Renk.metin);
-    return Kutu(
-      tikla: tikla,
-      child: Row(children: [
-        Icon(ikon, size: 18, color: renk),
-        const SizedBox(width: 12),
-        Text(metin,
-            style: Theme.of(c).textTheme.bodyLarge?.copyWith(color: renk)),
-      ]),
-    );
   }
 }
 

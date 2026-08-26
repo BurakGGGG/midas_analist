@@ -14,7 +14,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:midas_analist/ekran/hesap.dart';
+import 'package:midas_analist/ekran/kilit.dart';
 import 'package:midas_analist/ekran/sermaye.dart';
+import 'package:midas_analist/ekran/sozluk.dart';
+import 'package:midas_analist/servis/kilit.dart' show kilit;
 import 'package:midas_analist/parca/kart.dart';
 import 'package:midas_analist/servis/depo.dart';
 import 'package:midas_analist/servis/modeller.dart';
@@ -229,5 +233,57 @@ void main() {
       find.byType(MaterialApp),
       matchesGoldenFile('gorunum/sermaye.png'),
     );
+  });
+
+  // ── sonradan eklenen ekranlar ────────────────────────────────────────────
+  // Üçü de tek başına çizilebiliyor: sözlük önbellekten okuyor, hesap ve
+  // kilit ağ istemiyor. Ağ mocklamadan gerçek görüntü almanın yolu bu.
+
+  testWidgets('sozluk', (t) async {
+    SharedPreferences.setMockInitialValues({
+      'sozluk_v1': '''
+{"surum":1,"toplam_terim":3,"bolumler":[
+ {"kod":"stratejiler","ad":"Stratejiler",
+  "aciklama":"Sistemin tanıdığı üç giriş kalıbı. Üçü de t günü kapanışında sinyal üretir.",
+  "terimler":[
+   {"terim":"kirilim","kisa":"20 günlük zirvenin hacimle kırılması (breakout).",
+    "aciklama":"Kapanış son 20 günün en yükseğinin üstüne çıktığında, ama yalnızca hacim son 20 günün ortalamasının 1,4 katından fazlaysa girer.",
+    "nerede":"Tarama ekranında sinyal sütununda.","ders":"d1308","kolonlar":[]},
+   {"terim":"tepki","kisa":"Yükseliş trendi içindeki aşırı satım tepkisi.",
+    "aciklama":"","nerede":"","ders":"d704","kolonlar":[]}]},
+ {"kod":"gostergeler","ad":"Göstergeler",
+  "aciklama":"Tarama ve hisse ekranlarındaki sütunlar.",
+  "terimler":[
+   {"terim":"Göreli güç (GG)","kisa":"Hissenin endeksten ne kadar iyi performans gösterdiği.",
+    "aciklama":"GG60 = hissenin 60 günlük getirisi eksi XU100'ün 60 günlük getirisi.",
+    "nerede":"Taramada GG60 sütunu.","ders":"d903","kolonlar":["GG20","GG60"]}]}]}
+''',
+    });
+    await depo.yukle();
+    await t.binding.setSurfaceSize(const Size(420, 1000));
+    await t.pumpWidget(_sarmala(const SozlukEkran()));
+    await t.pump(const Duration(milliseconds: 200));
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/sozluk.png'));
+  });
+
+  testWidgets('hesap girisi', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await t.binding.setSurfaceSize(const Size(420, 820));
+    await t.pumpWidget(_sarmala(const HesapEkran()));
+    await t.pump(const Duration(milliseconds: 100));
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/hesap.png'));
+  });
+
+  testWidgets('pin ekrani', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await kilit.yukle();
+    await t.binding.setSurfaceSize(const Size(420, 900));
+    await t.pumpWidget(_sarmala(KilitEkran(acilinca: () {})));
+    await t.pump(const Duration(milliseconds: 100));
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/kilit.png'));
   });
 }

@@ -145,13 +145,24 @@ class _KilitDurum extends State<KilitEkran> {
     final bekle = kilit.bekleme;
     return Scaffold(
       backgroundColor: Renk.zemin,
+      // Tuş takımı ALTTA, kimlik ve noktalar üstteki boşlukta ortalı.
+      // Önce hepsi dikey ortadaydı: ekranın altı boş kalıyor, tuşlar
+      // başparmağın ulaşamayacağı yükseklikte duruyordu.
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+        child: Column(
+          children: [
+            // Center ŞART: Expanded içindeki kaydırma görünümü tüm boyu
+            // kaplar ve içeriği yukarı yapıştırır — mainAxisAlignment
+            // orada işe yaramaz, çünkü Column zaten içeriği kadar.
+            // Center, kaydırma görünümünü içeriği kadar küçültüp ortalar.
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                 Icon(Icons.lock_outline_sharp, size: 34, color: sem.aksan),
                 const SizedBox(height: 14),
                 Text('Midas Analist',
@@ -178,22 +189,26 @@ class _KilitDurum extends State<KilitEkran> {
                               style: Theme.of(c).textTheme.bodySmall
                                   ?.copyWith(color: sem.eksi))),
                 ),
-                const SizedBox(height: 6),
-
-                _TusTakimi(
-                  etkin: !_mesgul && bekle == 0,
-                  bas: _bas,
-                  sil: _sil,
+                    ],
+                  ),
                 ),
-
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: _mesgul ? null : _unuttum,
-                  child: const Text('PIN\'i unuttum'),
-                ),
-              ],
+              ),
             ),
-          ),
+            _TusTakimi(
+              etkin: !_mesgul && bekle == 0,
+              bas: _bas,
+              sil: _sil,
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: _mesgul ? null : _unuttum,
+              // Kaçış yolu, ana eylem değil: aksan yeşili tuş takımıyla
+              // yarışıyordu.
+              style: TextButton.styleFrom(foregroundColor: Renk.metinSolgun),
+              child: const Text('PIN\'i unuttum'),
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );
@@ -414,14 +429,20 @@ class _Noktalar extends StatelessWidget {
       children: List.generate(Kilit.basamak, (i) {
         final iciDolu = i < dolu;
         return Container(
-          width: 16, height: 16,
+          // 16'dan 20'ye: bu ekranın TEK geri bildirimi bu kareler, kaç
+          // hane girdiğini başka hiçbir şey söylemiyor. Boş halin
+          // kenarlığı da Renk.cizgi'den cizgiParlak'a alındı — zeminden
+          // ayırt edilemiyordu.
+          width: 20, height: 20,
           margin: const EdgeInsets.symmetric(horizontal: 7),
           decoration: BoxDecoration(
             // Sıfır yuvarlaklık: nokta değil kare. Tema kuralı.
             color: iciDolu ? (hata ? sem.eksi : sem.aksan) : Colors.transparent,
             border: Border.all(
-                color: hata ? sem.eksi : (iciDolu ? sem.aksan : Renk.cizgi),
-                width: 1.6),
+                color: hata
+                    ? sem.eksi
+                    : (iciDolu ? sem.aksan : Renk.cizgiParlak),
+                width: 1.8),
           ),
         );
       }),
