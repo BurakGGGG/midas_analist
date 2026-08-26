@@ -252,7 +252,16 @@ def calistir(
     )
 
 
-def metrik_hesapla(sonuc: Sonuc, kiyas: pd.Series | None = None) -> dict:
+# Türkiye'de mevduat/tahvil faizi. BU ÖNEMLİ: %40 faizin olduğu ülkede
+# %27 getiren strateji, risksiz alternatifin ALTINDADIR. Risksiz getiriyi
+# çıkarmayan bir Sharpe, her stratejiyi olduğundan iyi gösterir —
+# `istatistik.performans` bunu baştan beri doğru yapıyordu, backtest
+# yapmıyordu ve iki yerde iki farklı sayı üretiliyordu.
+RISKSIZ_YILLIK = 40.0
+
+
+def metrik_hesapla(sonuc: Sonuc, kiyas: pd.Series | None = None,
+                   risksiz_yillik: float = RISKSIZ_YILLIK) -> dict:
     ozk = sonuc.ozkaynak
     if len(ozk) < 2:
         return {"hata": "yetersiz veri"}
@@ -266,9 +275,14 @@ def metrik_hesapla(sonuc: Sonuc, kiyas: pd.Series | None = None) -> dict:
 
     gunluk = ozk.pct_change().dropna()
     oynaklik = gunluk.std(ddof=0) * np.sqrt(252) * 100 if len(gunluk) > 1 else 0.0
-    sharpe = (gunluk.mean() / gunluk.std(ddof=0) * np.sqrt(252)) if gunluk.std(ddof=0) > 0 else 0.0
-    negatif = gunluk[gunluk < 0]
-    sortino = (gunluk.mean() / negatif.std(ddof=0) * np.sqrt(252)) if len(negatif) > 1 and negatif.std(ddof=0) > 0 else 0.0
+    # FAZLA getiri: günlük getiriden günlük risksiz getiri çıkarılır.
+    # Bu satır olmadan Sharpe "getiri / oynaklık" olur ve mevduatın
+    # altında kalan bir strateji 1,9 gibi mükemmel bir skor alır.
+    rf_gunluk = (1 + risksiz_yillik / 100) ** (1 / 252) - 1
+    fazla = gunluk - rf_gunluk
+    sharpe = (fazla.mean() / gunluk.std(ddof=0) * np.sqrt(252)) if gunluk.std(ddof=0) > 0 else 0.0
+    negatif = fazla[fazla < 0]
+    sortino = (fazla.mean() / negatif.std(ddof=0) * np.sqrt(252)) if len(negatif) > 1 and negatif.std(ddof=0) > 0 else 0.0
     dd = (ozk / ozk.cummax() - 1) * 100
     azami_dd = float(dd.min())
 
@@ -286,6 +300,7 @@ def metrik_hesapla(sonuc: Sonuc, kiyas: pd.Series | None = None) -> dict:
         "gunluk_ort_yuzde": round(float(gunluk.mean()) * 100, 4),
         "oynaklik_yuzde": round(float(oynaklik), 2),
         "sharpe": round(float(sharpe), 2),
+        "risksiz_yillik": risksiz_yillik,
         "sortino": round(float(sortino), 2),
         "azami_dusus_yuzde": round(azami_dd, 2),
         "islem_sayisi": len(islemler),

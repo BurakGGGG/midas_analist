@@ -1738,9 +1738,9 @@ KAYBEDENLER — ithal girdili üretici, dövizli borçlu TL gelirli şirketler
 Ve bir üst katman daha var: BIST'in kendisi dolar bazında ölçülür. Yabancı
 yatırımcı için önemli olan endeksin TL getirisi değil, USD getirisidir.
 
-Bu sistemin ölçtüğü rakam: XU100 son 3,28 yılda TL bazında +%222, ama USD
-bazında sadece +%32. Yabancı yatırımcının gördüğü ikinci rakamdır.
-(USD/TRY aynı dönemde 19,63'ten 48,07'ye gitti — getirinin çoğu kur.)
+Bu sistemin ölçtüğü rakam: XU100 son 3,29 yılda TL bazında +%221, ama USD
+bazında sadece +%31. Yabancı yatırımcının gördüğü ikinci rakamdır.
+(USD/TRY aynı dönemde 19,63'ten 48,08'e gitti — getirinin çoğu kur.)
 
 Kur takibi için sistem USD/TRY ve EUR/TRY'yi izler; `makro` komutunda 1 gün,
 1 ay, 3 ay ve 1 yıllık değişimleri gösterir ve enflasyona göre "TL reel
@@ -1965,7 +1965,7 @@ Sebep basit ve ölçülmüş: SMA200 filtresi olmadan "aşırı satım tepkisi"
 stratejisi düşen bıçağı yakalamaya dönüşüyor ve zarar ediyor.
 
 ADX filtresi de kullanılıyor (ADX > 20). Ama burada dürüst bir uyarı var:
-ADX eşiği tam 20'de sıçrıyor — ADX>20 ile +%118,6, ADX>15 ile +%61, ADX>25 ile
+ADX eşiği tam 20'de sıçrıyor — ADX>20 ile +%117,7, ADX>15 ile +%61, ADX>25 ile
 +%68. Bu keskin tepe AŞIRI UYDURMA işaretidir ve bu eşiğe güvenilmemeli.""",
  tuzak=""""Altın kesişim oldu, alalım" — bu sinyal geldiğinde fiyat genelde
 dipten önemli ölçüde yükselmiştir. Kesişim, trendin BAŞLANGICINI değil,
@@ -2008,8 +2008,8 @@ RSI 80 üstü olan hisse düşük zamanlama puanı alır. Sonuç: "trend ve şir
 konumlanmış ama fiyat şu an giriş için pahalı nokta" mesajı.
 
 Ölçülmüş kanıt: RSI(2) tabanlı aşırı satım tepki stratejisi bu veri setinde
-%53 kazanma oranıyla bile ZARAR ediyor (−%21,7). Kırılım stratejisi neredeyse
-aynı kazanma oranıyla (%48) +%118,6 yapıyor. Momentum göstergesine dayalı ters işlem, BIST'te
+%53 kazanma oranıyla bile ZARAR ediyor (−%22,0). Kırılım stratejisi neredeyse
+aynı kazanma oranıyla (%48) +%117,7 yapıyor. Momentum göstergesine dayalı ters işlem, BIST'te
 çalışmıyor.""",
  tuzak=""""RSI 70 üstü sat, 30 altı al" ezberi. Bu kural trendli piyasada
 sistematik olarak para kaybettirir: kazananı erken satar, düşeni erken alır.
@@ -2181,16 +2181,16 @@ Genel kural: göstergeler fiyatın matematiksel dönüşümüdür. Yeni bilgi
  bist="""Bu sistem üç stratejiyi 3,28 yıllık BIST verisinde ölçtü ve sonuç,
 göstergelere körü körüne güvenmemek gerektiğini gösteriyor:
 
-· "tepki" (RSI2 aşırı satım): %53 kazanma oranı, ama −%21,7 getiri
-· "kirilim" (Donchian + hacim): %48 kazanma oranı, +%118,6 getiri
+· "tepki" (RSI2 aşırı satım): %53 kazanma oranı, ama −%22,0 getiri
+· "kirilim" (Donchian + hacim): %48 kazanma oranı, +%117,7 getiri
 
 Kazanma oranları neredeyse eşit; getiri arasında 140 puan fark var. Sebep
 kazanç/kayıp büyüklüğü: kırılımın ortalama kazancı %15,5 / kaybı %7,9;
 tepkinin kazancı %4,0 / kaybı %5,5.
 
 Ve sistem iki dürüstlük notu tutuyor: (1) kırılımın ADX eşiği tam 20'de
-sıçrıyor — aşırı uydurma işareti, ölçülen +%118,6 gerçekte olacağından iyimser.
-(2) Aynı dönemde XU100 al-tut +%222 getirdi; üç strateji de endeksin altında.""",
+sıçrıyor — aşırı uydurma işareti, ölçülen +%117,7 gerçekte olacağından iyimser.
+(2) Aynı dönemde XU100 al-tut +%221 getirdi; üç strateji de endeksin altında.""",
  tuzak="""En tehlikeli tuzak: göstergeleri ARTIRARAK güven kazanmaya çalışmak.
 "7 göstergem var, hepsi al diyor" cümlesi, tek bir sinyalin yedi kez
 tekrarlanmasından ibaret olabilir.
@@ -2310,7 +2310,7 @@ KRİTİK SEZGİ: kazanma oranı tek başına hiçbir şey söylemez.
 
 Bu sistemin ölçtüğü üç örnek:
 · %53 kazanma, ort. kazanç %4,0, ort. kayıp %5,5 → BD NEGATİF, zararda
-· %48 kazanma, ort. kazanç %15,5, ort. kayıp %7,9 → BD POZİTİF, +%118,6
+· %48 kazanma, ort. kazanç %15,5, ort. kayıp %7,9 → BD POZİTİF, +%117,7
 · %90 kazanma, ort. kazanç %1,0, ort. kayıp %15,0 → BD NEGATİF
 
 Üçüncüsü özellikle öğreticidir: 10 işlemin 9'unu kazanıp yine de batabilirsin.
@@ -2549,15 +2549,26 @@ CALMAR = Yıllık getiri / Azami düşüş. "Yaşadığın acı başına kazanç
 KAZANMA ORANI ve KÂR FAKTÖRÜ = toplam kazanç / toplam kayıp.""",
  bist="""Bu sistemin ölçtüğü rakamlar, dersin tamamını örnekliyor:
 
-kirilim : +%118,6 getiri · Sharpe 1,93 · azami düşüş −%11,3
-trend   : +%84,5 getiri · Sharpe 1,27 · azami düşüş −%16,1
-XU100   : +%222,3 getiri · Sharpe 1,53 · azami düşüş −%22,9
+(2026-08-26 ölçümü · 3,29 yıl · Sharpe %40 risksiz getiriye göre)
 
-Endeks en çok getiriyi verdi ama en çok düşüşü de yaşattı. Kırılım stratejisi
-daha az kazandırdı ama yarısı kadar düşüşle.
+kirilim : +%117,7 getiri · Sharpe −0,71 · azami düşüş −%11,3
+trend   : +%82,1 getiri · Sharpe −0,91 · azami düşüş −%16,1
+XU100   : +%221,1 getiri · Sharpe −0,03 · azami düşüş −%22,9
 
-Ve dürüst not: aynı dönemde USD bazında XU100 +%32, kirilim −%10,8. Nominal TL
+BÜTÜN SHARPE'LAR NEGATİF. Sebebi basit ve acı: kirilim yıllık %26,7
+kazandırdı, aynı dönemde mevduat %40 veriyordu. Risksiz alternatifin altında
+kalan bir stratejinin risk-ayarlı skoru negatiftir.
+
+Endeks düşüşü en çok yaşattı (−%22,9), ama risk-ayarlı olarak stratejilerin
+HEPSİNDEN iyiydi. "Daha az düşüşle daha az kazanmak" tek başına başarı
+değildir; ölçüt mevduattır.
+
+Ve dürüst not: aynı dönemde USD bazında XU100 +%31, kirilim −%11. Nominal TL
 getirisi, gerçeğin sadece bir kısmını anlatıyor.
+
+Bu rakamlar 2026-08-26'da düzeltildi: backtest o güne kadar Sharpe'ı risksiz
+getiriyi ÇIKARMADAN hesaplıyordu ve kirilim için 1,93 gösteriyordu. Sistem,
+bu dersin bir alt satırında uyardığı hatayı kendisi yapıyormuş.
 
 Sistem Sharpe'ı risksiz getiriye göre hesaplar — %40 varsayılan. Bunu sıfır
 almak, Türkiye'de her stratejiyi olduğundan iyi gösterir.""",
@@ -2992,13 +3003,13 @@ Sağlamlık testleri:
  bist="""Bu sistemin backtest motoru yukarıdaki maddelerin hepsini modelliyor
 ve sonuçları dürüstçe raporluyor:
 
-kirilim: +%118,6 · Sharpe 1,93 · azami düşüş −%11,3
+kirilim: +%117,7 · Sharpe −0,71 (risksiz %40'a göre) · azami düşüş −%11,3
 Sağlamlık: 24 parametre kombinasyonunun 24'ünde kârlı (medyan +%97);
 kayma 0→50bp'de +%142→+%115.
 
 AMA açık iki uyarı da tutuyor.
 
-BİR: ADX eşiği tam 20'de sıçrıyor (ADX>20 → +%118,6, ADX>15 → +%61,
+BİR: ADX eşiği tam 20'de sıçrıyor (ADX>20 → +%117,7, ADX>15 → +%61,
 ADX>25 → +%68). Bu keskin tepe AŞIRI UYDURMA işaretidir.
 
 İKİ — ve bu daha öğretici: ADX>15 ile ADX>20 neredeyse AYNI SAYIDA işlem
@@ -3108,8 +3119,9 @@ BUNDAN SONRA NE YAPACAKSIN:
   eklemesiz aynı oran 1.000 TL'yi 2.197 TL yapar.""",
  bist="""Son bir dürüstlük notu, bu sistemin kendi ölçümlerinden:
 
-BIST 100'ün son bir yıllık REEL getirisi −%3,7.
-Kurulan en iyi stratejinin USD bazında 3,28 yıllık getirisi −%10,8.
+(2026-08-26 ölçümü — rakamlar `cekirdek/olcumler.py`'de, oradan güncellenir.)
+
+BIST 100'ün son bir yıllık REEL getirisi −%4,2.
 Ve sistemin CANLI sicili (4,1 ay, 767 sinyal): 20 günlük vadede %35,5
 kazanma, ortalama −%0,98. Backtest ne söylerse söylesin, canlı ölçüm bu.
 

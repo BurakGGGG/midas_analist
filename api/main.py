@@ -565,7 +565,7 @@ def egitmen_mufredat():
         return d
 
     return {
-        "surum": 3,   # m13 grafik okuma eklendi
+        "surum": 4,   # Sharpe düzeltmesi: ders rakamları değişti
         "moduller": [
             {
                 "kod": m.kod, "ad": m.ad, "aciklama": m.aciklama,

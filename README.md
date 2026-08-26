@@ -433,6 +433,7 @@ cekirdek/
   izleme.py             stop/hedef izleme defteri
   bot_calistir.py       botun periyodik turu (timer bunu çağırır)
   defter.py             karar günlüğü: kullanıcının kendi sicili
+  olcumler.py           derslerde aktarılan ölçüm rakamlarının tek kaynağı
   haber_esleme.py       haber -> hisse eşlemesi (takma ad + jenerik kara liste)
   ogrenme.py            sinyal kaydı, sonuç ölçümü, karne, kıyas uyarıları
   gunluk.py             günlük iş: 6 adım, gün özeti, geriye doldurma
@@ -869,6 +870,42 @@ API durumsuzdur, pozisyonlar telefonda yaşar. Sunucu onları bilmez ve
 bilmemeli. Ama alarm için neyi izleyeceğini bilmesi gerekiyor — çözüm
 telefonun portföyünü sunucuya taşımak değil, botun kendi küçük izleme
 listesini tutması (`veri/izleme.json`, `/izle` komutuyla dolar).
+
+
+## Ölçüm rakamları ve tutarlılık koruması
+
+Müfredat birçok yerde "sistemin ölçtüğü rakam" diye sayı aktarır. Bunlar
+`cekirdek/olcumler.py`'de **tek kaynakta** tutulur ve
+`testler/test_olcum_tutarlilik.py` her rakamın ilgili ders metninde
+geçtiğini doğrular. Ölçüm yenilenip sabitler güncellenirse, ders metni de
+güncellenene kadar test düşer.
+
+Neden gerekti: 2026-08-26'da dersler `kirilim Sharpe 1,93` diye
+aktarıyordu. Doğrusu **−0,71**.
+
+**Sebep — ve sistemin kendi dersini ihlal etmesi:** `backtest.metrik_hesapla`
+Sharpe'ı risksiz getiriyi ÇIKARMADAN hesaplıyordu. `istatistik.performans`
+baştan beri doğru yapıyordu (`risksiz_yillik=40`), yani kod tabanında iki
+farklı Sharpe vardı ve dersler yanlış olanı aktarıyordu — üstelik aynı
+dersin bir alt satırı *"Sistem Sharpe'ı risksiz getiriye göre hesaplar"*
+diye iddia ediyordu.
+
+Türkiye'de bu fark her şeyi değiştirir: kirilim 3,29 yılda yıllık %26,7
+kazandırdı, aynı dönemde mevduat %40 veriyordu. Risksiz alternatifin
+altında kalan bir stratejinin risk-ayarlı skoru **negatiftir**.
+
+| | eski (yanlış) | doğru |
+|---|---|---|
+| kirilim | Sharpe 1,93 | **−0,71** |
+| trend | Sharpe 1,27 | **−0,91** |
+| XU100 | Sharpe 1,53 | **−0,03** |
+
+Sonuç dersin hükmünü de tersine çevirdi: endeks, risk-ayarlı olarak
+stratejilerin hepsinden iyiymiş.
+
+> Veri katmanına dokunulduğunda ya da evren değiştiğinde backtest yeniden
+> çalıştırılıp `olcumler.py` ve `OLCUM_TARIHI` güncellenmeli. Test, ders
+> metinlerinin geride kalmasını engeller.
 
 
 ## Bilinen sınırlar

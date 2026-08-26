@@ -214,7 +214,8 @@ class Egitmen {
   static const surum = 4;
   // 3: m13 grafik okuma modülü eklendi (7 ders + şemalar).
   // Bu sayı artmazsa telefondaki eski banka kullanılmaya devam eder.
-  static const mufredatSurum = 3;
+  // 4: Sharpe risksiz getiriye göre düzeltildi, ders rakamları değişti.
+  static const mufredatSurum = 4;
 
   List<EgitmenModul> moduller = [];
   Map<String, DersKaydi> dersKayit = {};
