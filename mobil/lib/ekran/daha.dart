@@ -12,6 +12,8 @@ import 'defter.dart';
 import 'karne.dart';
 import 'sermaye.dart';
 import 'sozluk.dart';
+import 'hesap.dart';
+import 'kilit.dart';
 
 class DahaEkran extends StatelessWidget {
   const DahaEkran({super.key});
@@ -52,6 +54,14 @@ class DahaEkran extends StatelessWidget {
       (Icons.school_sharp, 'Öğren',
           '10 konu — özellikle göstergelerin yanıldığı yerler',
           const OgrenEkran()),
+      // Ayarların hemen ÜSTÜNDE: ikisi de kurulumla ilgili ve yeni
+      // telefonda sırayla yapılıyor — önce sunucu, sonra hesap.
+      (Icons.cloud_sharp, 'Hesap ve yedek',
+          'Portföy, tez ve ilerleme buluta yedeklensin',
+          const HesapEkran()),
+      (Icons.lock_sharp, 'Güvenlik',
+          'Uygulama açılışında 6 haneli PIN sor',
+          const GuvenlikEkran()),
       (Icons.settings_sharp, 'Ayarlar', 'Sunucu adresi, risk kuralları',
           const AyarlarEkran()),
     ];

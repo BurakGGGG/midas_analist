@@ -14,6 +14,10 @@ dependencies:
   intl: ^0.19.0
   fl_chart: ^0.69.0
   cupertino_icons: ^1.0.8
+  # Uygulama kilidinin PIN özeti için. Dart ekibinin resmî paketi, saf
+  # Dart, yerel kod yok. Kendi SHA-256'sını yazmak yerine bunu almak
+  # bilinçli: elle yazılmış kripto sessizce yanlış olur.
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
