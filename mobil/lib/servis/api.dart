@@ -185,6 +185,9 @@ class Api {
       Map<String, dynamic>.from(await _get('/dagitim',
           uzun: true, sorgu: {'sermaye': sermaye, 'profil': profil}));
 
+  Future<Map<String, dynamic>> sozluk() async =>
+      Map<String, dynamic>.from(await _get('/sozluk'));
+
   Future<List<dynamic>> ogrenListe() async =>
       (await _get('/ogren'))['konular'] as List<dynamic>;
 

@@ -11,6 +11,7 @@ import 'gun_ozeti.dart';
 import 'defter.dart';
 import 'karne.dart';
 import 'sermaye.dart';
+import 'sozluk.dart';
 
 class DahaEkran extends StatelessWidget {
   const DahaEkran({super.key});
@@ -34,8 +35,13 @@ class DahaEkran extends StatelessWidget {
           'Senin kararların — sistemi takip mi ettin, kendi fikrin mi',
           const DefterEkran()),
       (Icons.school_sharp, 'Eğitmen',
-          '13 modül, 72 ders · günlük ders + pekiştirme',
+          '13 modül, 76 ders · günlük ders + pekiştirme',
           const IlerlemeEkran()),
+      // Eğitmenin hemen ALTINDA: ikisi aynı soruya iki farklı sürede
+      // cevap veriyor. Sözlük 30 saniye, ders 6-9 dakika.
+      (Icons.abc_sharp, 'Sözlük',
+          'Ekranlardaki terimler ne demek — GG60, ATR, Sharpe, karantina',
+          const SozlukEkran()),
       (Icons.public_sharp, 'Makro', 'Kur, faiz, emtia, enflasyon ve piyasa rejimi',
           const MakroEkran()),
       (Icons.donut_large_sharp, 'Sektörler', 'Hangi sektör rüzgârı arkasına almış',

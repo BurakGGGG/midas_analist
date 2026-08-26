@@ -1004,8 +1004,35 @@ def komut_aibutce(args, a):
     print(f"  hedefinin üstündedir.{rapor.R}")
 
 
+def komut_sozluk(args, a):
+    """Uygulamanın kendi terimleri. Ders değil, karşılık."""
+    from cekirdek import sozluk as sz
+
+    if args.terim:
+        t = sz.terim_getir(args.terim)
+        if t is not None:
+            rapor.terim_goster(t, tam=True)
+            return
+        eslesen = sz.ara(args.terim)
+        if not eslesen:
+            rapor.sozluk_goster([], arama=args.terim)
+            return
+        # Tek eşleşme varsa doğrudan aç; birden çoksa listele.
+        if len(eslesen) == 1:
+            rapor.terim_goster(eslesen[0], tam=True)
+            return
+        bolumler = [sz.Bolum(b.kod, b.ad, b.aciklama,
+                             [t for t in b.terimler if t in eslesen])
+                    for b in sz.BOLUMLER]
+        rapor.sozluk_goster([b for b in bolumler if b.terimler],
+                            arama=args.terim, tam=False)
+        return
+
+    rapor.sozluk_goster(sz.BOLUMLER, tam=bool(args.tam))
+
+
 def komut_ogren(args, a):
-    """Eski 10 konuluk referans — artık 65 derslik müfredata yönlendiriyor."""
+    """Eski 10 konuluk referans — artık tam müfredata yönlendiriyor."""
     from cekirdek import ogren as og, egitmen_dersler as ed
 
     # Eski konu adlarını yeni derslere eşle
@@ -1025,7 +1052,8 @@ def komut_ogren(args, a):
     if not args.konu:
         rapor.baslik("EĞİTİM")
         print(f"\n  {rapor.G}Bu komut eski 10 konuluk özet referanstı. Artık"
-              f"\n  12 modül ve 65 derslik tam müfredat var.{rapor.R}\n")
+              f"\n  {len(ed.MODULLER)} modül ve {len(ed.TUM_DERSLER)} derslik "
+              f"tam müfredat var.{rapor.R}\n")
         print(f"  {rapor.B}python analist.py mufredat{rapor.R}   müfredat haritası")
         print(f"  {rapor.B}python analist.py ogret{rapor.R}       bugünün dersi")
         print(f"  {rapor.B}python analist.py ders d101{rapor.R}   belirli bir ders")
@@ -1200,7 +1228,7 @@ def main():
                     help="Okundu olarak işaretleme (sadece göster)")
     dr.set_defaults(fn=komut_ders)
 
-    mf = alt.add_parser("mufredat", help="12 modül, 65 ders — müfredat haritası",
+    mf = alt.add_parser("mufredat", help="13 modül — müfredat haritası",
                         parents=[ortak])
     mf.add_argument("modul", nargs="?", help="örn. m4 (boş bırakırsan tümü)")
     mf.set_defaults(fn=komut_mufredat)
@@ -1211,6 +1239,15 @@ def main():
     so = alt.add_parser("sirket-oku", help="'Bu şirketi 10 dakikada anlat' egzersizi",
                         parents=[ortak])
     so.add_argument("hisse"); so.set_defaults(fn=komut_sirket_oku)
+
+    sz_ = alt.add_parser("sozluk",
+                         help="Uygulamadaki terimlerin karşılıkları",
+                         parents=[ortak])
+    sz_.add_argument("terim", nargs="?",
+                     help="Terim ya da sütun adı (GG60, ATR_yuzde, Sharpe)")
+    sz_.add_argument("--tam", action="store_true",
+                     help="Bütün terimleri açıklamalarıyla bas")
+    sz_.set_defaults(fn=komut_sozluk)
 
     og_ = alt.add_parser("ogren", help="Borsa eğitimi: terimler ve tuzaklar", parents=[ortak])
     og_.add_argument("konu", nargs="?")

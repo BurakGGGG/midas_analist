@@ -550,12 +550,13 @@ def backtest_sonuc(is_id: str):
 
 @app.get("/egitmen/mufredat")
 def egitmen_mufredat():
-    """Tüm müfredat: 13 modül, 72 ders. Cihaz bir kez indirip saklar —
-    dersler internetsiz okunabilir olmalı.
+    """Tüm müfredat: 13 modül. Cihaz bir kez indirip saklar — dersler
+    internetsiz okunabilir olmalı.
 
     `surum` artınca istemci bankayı yeniden indirir. Yeni ders eklenip
     sürüm artmazsa telefon eski müfredatı kullanmaya devam eder ve
-    kimse fark etmez."""
+    kimse fark etmez. Ders sayısı yanıtta zaten var; docstring'e yazmak
+    ikinci bir gerçek kaynağı olur ve o eskir."""
     from cekirdek import egitmen_dersler as ed
 
     def ders_akit(d: dict) -> dict:
@@ -565,7 +566,7 @@ def egitmen_mufredat():
         return d
 
     return {
-        "surum": 4,   # Sharpe düzeltmesi: ders rakamları değişti
+        "surum": 5,   # m13'e 4 ders eklendi (retest, mum sözlüğü, sicil, zaman serisi)
         "moduller": [
             {
                 "kod": m.kod, "ad": m.ad, "aciklama": m.aciklama,
@@ -953,6 +954,57 @@ def defter_satim(istek: DefterSatim):
     if not defter.acik_pozisyon(istek.sembol):
         izleme.sil(istek.sembol)
     return guvenli({"karar": k, "acik": defter.acik_pozisyonlar()})
+
+@app.get("/sozluk")
+def sozluk():
+    """Uygulama sözlüğü: ekranlarda geçen terimlerin karşılıkları.
+
+    Müfredat gibi bir kez indirilip saklanır — sözlüğe en çok bakılacak
+    an, tarama ekranında bir sütuna takıldığın andır ve o an internet
+    olmayabilir. `surum` artınca istemci yeniden indirir.
+
+    `kolonlar` alanı istemcinin sütun başlığından terime gitmesini
+    sağlar: kullanıcı 'GG60' başlığına dokunur, ekran 'Göreli güç'
+    maddesini açar.
+    """
+    from cekirdek import sozluk as sz
+
+    def terim_akit(t) -> dict:
+        return {
+            "terim": t.terim,
+            "kisa": t.kisa,
+            "aciklama": metin_akit(t.aciklama) if t.aciklama else "",
+            "nerede": metin_akit(t.nerede) if t.nerede else "",
+            "ders": t.ders,
+            "kolonlar": t.kolonlar,
+        }
+
+    return {
+        "surum": 1,
+        "bolumler": [
+            {"kod": b.kod, "ad": b.ad, "aciklama": b.aciklama,
+             "terimler": [terim_akit(t) for t in b.terimler]}
+            for b in sz.BOLUMLER
+        ],
+        "toplam_terim": len(sz.TUM_TERIMLER),
+    }
+
+
+@app.get("/sozluk/{ad}")
+def sozluk_terim(ad: str):
+    """Tek terim — sütun başlığı ('ATR_yuzde') ya da terim adı ile."""
+    from cekirdek import sozluk as sz
+    t = sz.terim_getir(ad)
+    if t is None:
+        eslesen = sz.ara(ad)
+        if not eslesen:
+            raise HTTPException(404, f"{ad} sözlükte yok")
+        t = eslesen[0]
+    return {"terim": t.terim, "kisa": t.kisa,
+            "aciklama": metin_akit(t.aciklama) if t.aciklama else "",
+            "nerede": metin_akit(t.nerede) if t.nerede else "",
+            "ders": t.ders, "kolonlar": t.kolonlar}
+
 
 @app.get("/stratejiler")
 def stratejiler():

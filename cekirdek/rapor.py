@@ -530,6 +530,43 @@ def mufredat_goster(moduller: list[dict], durum: dict) -> None:
     print(f"\n  {G}Bir modülü görmek için:  python analist.py mufredat m4{R}")
 
 
+def terim_goster(t, tam: bool = True) -> None:
+    """Tek terim. `tam=False` iken yalnızca ad + tek satır karşılık —
+    liste görünümünde 55 terimin gövdesini basmak sözlüğü okunmaz yapar."""
+    kolon = f"  {G}[{', '.join(t.kolonlar)}]{R}" if t.kolonlar else ""
+    print(f"\n  {B}{t.terim}{R}{kolon}")
+    print(f"  {Y}{t.kisa}{R}")
+    if not tam:
+        return
+    if t.aciklama:
+        print()
+        for satir in _paragraf_birlestir(t.aciklama, GENISLIK - 6).split("\n"):
+            print(f"  {satir}" if satir else "")
+    if t.nerede:
+        print(f"\n  {G}Nerede: {t.nerede}{R}")
+    if t.ders:
+        print(f"  {G}Dersi:  python analist.py ders {t.ders}{R}")
+
+
+def sozluk_goster(bolumler, arama: str = "", tam: bool = False) -> None:
+    toplam = sum(len(b.terimler) for b in bolumler)
+    baslik(f"SÖZLÜK · {toplam} terim" + (f" · '{arama}'" if arama else ""))
+    if not toplam:
+        print(f"\n  {Y}'{arama}' sözlükte yok.{R}")
+        print(f"  {G}Sütun adıyla da arayabilirsin: ATR_yuzde, DON_ust, GG60{R}")
+        return
+    for b in bolumler:
+        if not b.terimler:
+            continue
+        alt_baslik(f"{b.ad.upper()} ({len(b.terimler)})")
+        print(f"  {G}{b.aciklama}{R}")
+        for t in b.terimler:
+            terim_goster(t, tam=tam)
+        print()
+    if not tam:
+        print(f"  {G}Bir terimin tamamı için:  python analist.py sozluk GG60{R}")
+
+
 # ═══════════════════════════════════════════════ günlük iş ve öğrenme
 
 def gun_ozeti_goster(o: dict) -> None:
