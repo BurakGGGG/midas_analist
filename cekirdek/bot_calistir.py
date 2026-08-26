@@ -409,6 +409,24 @@ def _komut_isle(metin: str) -> str:
     if komut in ("karne", "sicil"):
         return _karne_ozeti()
 
+    if komut in ("saglik", "sağlık"):
+        from . import saglik
+        d = saglik.ozet()
+        g, disk = d["gunluk_is"], d["disk"]
+        s = ["🩺 <b>Sistem sağlığı</b>"]
+        s.append(f"\nGünlük iş bugün: "
+                 + ("✅ çalıştı" if g["calisti"]
+                    else ("⏳ henüz çalışmadı" if g["deneme"] == 0
+                          else f"🔴 {g['hata_sayisi']} hata")))
+        if g.get("son_hata"):
+            s.append(f"<code>{telegram.kacis(g['son_hata'][:200])}</code>")
+        s.append(f"Disk: %{disk.get('kullanilan_yuzde', '?')} dolu · "
+                 f"{disk.get('bos_gb', '?')} GB boş"
+                 + ("  ⚠️" if disk.get("uyari") else ""))
+        s.append(f"Yedek: {d['yedek_sayisi']} kopya"
+                 + (f" · son {d['son_yedek']}" if d["son_yedek"] else ""))
+        return "\n".join(s)
+
     if komut == "ders":
         return _gunun_dersi()
 
@@ -458,6 +476,18 @@ def main() -> int:
             telegram.gonder(f"Komut işlenemedi: {str(e)[:120]}")
     if en_son != izleme.son_id():
         izleme.son_id(en_son)
+
+    # ── 1b) NÖBET: günlük iş çalıştı mı?
+    # Günde en fazla bir kez uyarır. İşaret dosyası izleme defterinde
+    # tutulur — bot her dakika çalıştığı için, durum dosyaya yazılmazsa
+    # aynı uyarı 60 kez giderdi ve kullanıcı botu susturur.
+    try:
+        from . import saglik
+        uyari = saglik.nobet()
+        if uyari and telegram.gonder(uyari):
+            saglik.uyari_isaretle("gunluk_is")
+    except Exception:
+        pass   # nöbetçi çökerse bot durmasın
 
     # ── 2) pozisyon kontrolü (yalnızca seans saatlerinde)
     # Seans dışında fiyat değişmiyor; her 5 dakikada bir 100 hisse

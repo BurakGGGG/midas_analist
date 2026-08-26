@@ -120,6 +120,7 @@ KOMUTLAR = [
     ("izle",   "Stop izle — /izle THYAO 250 300"),
     ("liste",  "İzlenen pozisyonlar"),
     ("birak",  "İzlemeyi bırak — /birak THYAO"),
+    ("saglik", "Sunucu ve günlük iş durumu"),
     ("yardim", "Komut listesi"),
 ]
 

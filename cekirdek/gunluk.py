@@ -255,7 +255,21 @@ def calistir(sermaye: float = 1000.0, evren_adi: str = "bist100",
                             f"{sum(olculen.values())} sonuç")
         rapor["durum"] = "başarılı"
 
-        # ── 7) BİLDİRİM
+        # ── 7) YEDEK
+        # Ambar öğrenme hafızası: fiyat geçmişi, sinyaller, sonuçlar.
+        # Bozulursa geri getirilemez. Kendi kabuğunda: yedek alınamadı
+        # diye başarılı bir iş başarısız sayılmamalı.
+        try:
+            from . import saglik as _s
+            y = _s.yedek_al()
+            rapor["adimlar"]["yedek"] = y
+            if y.get("alindi") and not sessiz:
+                yaz(f"       yedek: {y['dosya']} ({y['boyut_mb']} MB, "
+                    f"{y['tutulan']} kopya tutuluyor)")
+        except Exception as e:
+            rapor["adimlar"]["yedek"] = {"hata": str(e)[:150]}
+
+        # ── 8) BİLDİRİM
         # En sonda ve kendi kabuğunda: özet ambara YAZILDIKTAN sonra
         # gönderilir. Telegram çökerse günlük iş başarılı sayılmalı —
         # bildirim işin kendisi değil, üstüne eklenen katman.
@@ -285,6 +299,25 @@ def calistir(sermaye: float = 1000.0, evren_adi: str = "bist100",
         rapor["durum"] = "hata"
         rapor["hata"] = str(e)[:300]
         yaz(f"  HATA: {str(e)[:200]}")
+
+        # SESSİZ ÇÖKMEYİ SESLİ YAP. Bu bildirim olmadan iş bir hafta
+        # çökse kullanıcı yalnızca "bugün sinyal yok" görürdü; öğrenme
+        # kaydında kapatılamaz bir delik oluşurdu.
+        try:
+            from . import telegram as _t, saglik as _sg
+            if _t.kurulu_mu():
+                gitti = _t.gonder(
+                    "🔴 <b>Günlük iş ÇÖKTÜ</b>\n\n"
+                    f"{_t.kacis(str(e)[:200])}\n\n"
+                    f"<code>{_t.kacis(iz[-500:])}</code>\n\n"
+                    "<i>Bugünün fiyatları ve sinyalleri kaydedilmedi.</i>")
+                # YALNIZCA gönderilebildiyse işaretle. Gönderilemediyse
+                # nöbetçi 19:00'da devreye girsin — emniyet ağının varlık
+                # sebebi tam olarak bu durum.
+                if gitti:
+                    _sg.uyari_isaretle("gunluk_is")
+        except Exception:
+            pass
         return rapor
 
 

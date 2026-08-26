@@ -434,6 +434,7 @@ cekirdek/
   bot_calistir.py       botun periyodik turu (timer bunu çağırır)
   defter.py             karar günlüğü: kullanıcının kendi sicili
   olcumler.py           derslerde aktarılan ölçüm rakamlarının tek kaynağı
+  saglik.py             nöbetçi, yedek, disk — sessiz arızayı sesli yapar
   haber_esleme.py       haber -> hisse eşlemesi (takma ad + jenerik kara liste)
   ogrenme.py            sinyal kaydı, sonuç ölçümü, karne, kıyas uyarıları
   gunluk.py             günlük iş: 6 adım, gün özeti, geriye doldurma
@@ -906,6 +907,48 @@ stratejilerin hepsinden iyiymiş.
 > Veri katmanına dokunulduğunda ya da evren değiştiğinde backtest yeniden
 > çalıştırılıp `olcumler.py` ve `OLCUM_TARIHI` güncellenmeli. Test, ders
 > metinlerinin geride kalmasını engeller.
+
+
+## Sağlamlaştırma: sessiz arıza yok
+
+Bu sistemin bütün değeri her akşam 18:10'da çalışan işte. O iş çökerse ne
+olurdu? **2026-08-26'ya kadar hiçbir şey:** hata ambara yazılıyor, kayda
+düşüyor ve orada kalıyordu. Bildirim `try` bloğunun içindeydi, yani yalnızca
+BAŞARIDA gönderiliyordu. Kullanıcı akşam mesajı gelmeyince "bugün sinyal
+yoktur" diye düşünürdü — ve bir hafta böyle geçse öğrenme kaydında
+kapatılamaz bir delik oluşurdu. O günlerin fiyatları geri getirilemez.
+
+### Üç koruma
+
+| Koruma | Ne zaman | Ne yapar |
+|---|---|---|
+| **Çökme bildirimi** | iş çöktüğü an | Telegram'a hata ve iz gönderir |
+| **Nöbetçi** | iş günü, 19:00 sonrası | Başarılı çalışma yoksa uyarır |
+| **Yedek** | her başarılı çalışmadan sonra | Ambarı kopyalar, 7 gün tutar |
+
+**Nöbetçi bir emniyet ağı, kopya değil.** Çökme anında mesaj gönderilebildiyse
+19:00'da tekrar söylemez. Ama mesaj gönderilemediyse (Telegram erişilemedi,
+süreç sert öldü) devreye girer — varlık sebebi tam olarak bu durum.
+
+Sessiz kalma koşulları da bilinçli: hafta sonu (BIST kapalı), 19:00'dan önce
+(iş henüz çalışmamış olabilir), ve iş başarılıysa. Yanlış alarm, gerçek
+alarmı değersizleştirir.
+
+### Yedek neye karşı korur
+
+Bozulan veritabanı, hatalı göç, yanlış silme. `sqlite3.backup()` kullanılır —
+düz dosya kopyası WAL kipinde yarım işlem yakalayabilir.
+
+**Neye karşı korumaz:** sunucunun tamamen kaybolması. Yedek aynı diskte.
+Onun için düzenli olarak dışarı çekmek gerekir:
+
+```bash
+rsync -az midas:midas/veri/ ~/midas_yedek/
+```
+
+### Bot komutu
+
+`/saglik` — günlük iş bugün çalıştı mı, disk doluluğu, kaç yedek var.
 
 
 ## Bilinen sınırlar
