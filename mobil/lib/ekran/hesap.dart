@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../servis/hesap.dart';
+import '../servis/push.dart';
 import '../servis/modeller.dart';
 import '../parca/kart.dart';
 import '../tema.dart';
@@ -56,6 +57,9 @@ class _HesapDurum extends State<HesapEkran> {
         } else {
           await hesap.giris(e, p);
         }
+        // Push jetonu o ana kadar sahipsizdi: jeton kullanıcıya bağlı
+        // saklanıyor, oturum açılmadan sunucuya yazılamıyordu.
+        await push.hesapAcildi();
         _parola.clear();
       }, basari: _kayitModu ? 'Hesap açıldı ve ilk yedek alındı.' : null);
 
@@ -156,6 +160,10 @@ class _HesapDurum extends State<HesapEkran> {
               const SizedBox(height: 12),
               Satir('Son yedek', _zaman(hesap.sonYedek)),
               Satir('Yedek sürümü', '${hesap.surum}'),
+              Satir('Bildirim', push.hazir
+                  ? (push.izinVar ? 'açık' : 'izin verilmedi')
+                  : 'kapalı (Firebase kurulu değil)',
+                  renk: push.hazir && push.izinVar ? sem.arti : null),
             ],
           ),
         ),
@@ -190,7 +198,16 @@ class _HesapDurum extends State<HesapEkran> {
         const SizedBox(height: 4),
         Center(
           child: TextButton(
-            onPressed: _mesgul ? null : () => _calistir(hesap.cikis),
+            onPressed: _mesgul
+                ? null
+                : () => _calistir(() async {
+                      // Oturum jetonu cikis() ile siliniyor; cihaz kaydını
+                      // ondan ÖNCE düşür, yoksa bu telefona bildirim
+                      // gitmeye devam eder.
+                      final j = hesap.jeton;
+                      if (j != null) await push.hesapKapandi(j);
+                      await hesap.cikis();
+                    }),
             child: const Text('Çıkış yap'),
           ),
         ),

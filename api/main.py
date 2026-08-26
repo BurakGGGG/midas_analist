@@ -1044,6 +1044,45 @@ def hesap_parola(istek: ParolaIstek,
     return {"degisti": True, "yeniden_giris_gerekli": True}
 
 
+class CihazIstek(BaseModel):
+    jeton: str
+    platform: str = ""
+
+
+@app.post("/cihaz")
+def cihaz_kaydet(istek: CihazIstek,
+                 authorization: str | None = Header(default=None)):
+    """Push jetonunu kaydeder. İstemci HER AÇILIŞTA çağırır.
+
+    Firebase jetonu kalıcı değil: uygulama yeniden kurulunca, veri
+    temizlenince ya da kendiliğinden yenilenebilir. Tek seferlik kayıt
+    yapsaydık jeton yenilendiği gün bildirimler sessizce kesilirdi."""
+    from cekirdek import cihaz
+    kid = _kullanici(authorization)
+    r = cihaz.kaydet(kid, istek.jeton, istek.platform)
+    if not r.get("kayitli"):
+        raise HTTPException(400, r.get("not", "jeton kaydedilemedi"))
+    return {**r, "cihaz_sayisi": len(cihaz.liste(kid))}
+
+
+@app.delete("/cihaz")
+def cihaz_sil(jeton: str = Query(...),
+              authorization: str | None = Header(default=None)):
+    """Çıkış yaparken çağrılır — bu telefona artık bildirim gitmesin."""
+    from cekirdek import cihaz
+    _kullanici(authorization)
+    return {"silindi": cihaz.sil(jeton)}
+
+
+@app.get("/bildirim/durum")
+def bildirim_durum(authorization: str | None = Header(default=None)):
+    """Hangi kanallar açık ve kaç cihaz kayıtlı. Hesap ekranı gösteriyor."""
+    from cekirdek import cihaz, haberci
+    kid = _kullanici(authorization)
+    return {"kanallar": haberci.acik_kanallar(),
+            "cihazlar": cihaz.liste(kid)}
+
+
 @app.get("/yedek")
 def yedek_getir(authorization: str | None = Header(default=None)):
     from cekirdek import hesap

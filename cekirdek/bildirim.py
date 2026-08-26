@@ -118,6 +118,69 @@ def sabah_hatirlatici(plan: dict) -> str:
     return "\n".join(s)
 
 
+# ── push karşılıkları ──────────────────────────────────────────────────────
+#
+# Telegram mesajları uzun ve HTML'li; push bildirimi kilit ekranında iki
+# satır gösteriyor ve etiket kaldırmıyor. Aynı metni ikisine de vermek,
+# birinde etiket kalabalığı diğerinde yarım cümle demekti. Bu yüzden her
+# haberin iki biçimi var ve ikisi de burada — tek içerik katmanı.
+
+
+def sabah_push(plan: dict) -> tuple[str, str]:
+    """(başlık, gövde) — 09:45 bildirimi."""
+    emirler = plan.get("emirler") or []
+    if not emirler:
+        return "", ""
+    n = len(emirler)
+    baslik = f"Bugün açılışta {n} emir"
+    if n == 1:
+        e = emirler[0]
+        govde = (f"{e['sembol']} · {e.get('adet', 0)} adet · "
+                 f"stop {e.get('stop', 0):.2f} · hedef {e.get('hedef', 0):.2f}")
+    else:
+        govde = " · ".join(f"{e['sembol']} {e.get('adet', 0)} adet"
+                           for e in emirler[:3])
+        if n > 3:
+            govde += f" · +{n - 3} tane daha"
+    return baslik, govde
+
+
+def gunluk_push(ozet: dict) -> tuple[str, str]:
+    """(başlık, gövde) — 18:10 bildirimi."""
+    if not ozet or ozet.get("hata"):
+        return "Midas", "Günlük iş çalıştı ama özet çıkarılamadı."
+    sinyaller = ozet.get("sinyal_veren") or []
+    onerilen = [x for x in sinyaller if x.get("onerilir", x.get("alinabilir"))]
+    endeks = ozet.get("endeks_degisim")
+    bas = f"Midas · XU100 {_yuzde(endeks)}" if endeks is not None else "Midas"
+    if onerilen:
+        adlar = ", ".join(x["sembol"] for x in onerilen[:3])
+        govde = f"{len(onerilen)} sinyal: {adlar}"
+        if len(onerilen) > 3:
+            govde += f" +{len(onerilen) - 3}"
+        govde += " — yarın açılışta"
+    else:
+        govde = "Bugün önerilen sinyal yok. Nakitte beklemek de bir pozisyon."
+    return bas, govde
+
+
+def stop_push(pozisyon: dict, fiyat: float, tur: str) -> tuple[str, str]:
+    """(başlık, gövde) — gün içi stop/hedef uyarısı.
+
+    Bu üçü gerçek para kaybettiren an; push'ta da kısa ve net olmalı."""
+    sem = pozisyon.get("sembol", "?")
+    if tur == "stop_gecti":
+        return (f"🛑 {sem} stop altında",
+                f"Şu an {fiyat:.2f} ₺ · stop {pozisyon.get('stop', 0):.2f} ₺")
+    if tur == "hedef_gecti":
+        return (f"🎯 {sem} hedefe ulaştı",
+                f"Şu an {fiyat:.2f} ₺ · hedef {pozisyon.get('hedef', 0):.2f} ₺")
+    if tur == "stop_yakin":
+        return (f"⚠️ {sem} stopa yaklaştı",
+                f"Şu an {fiyat:.2f} ₺ · stop {pozisyon.get('stop', 0):.2f} ₺")
+    return "", ""
+
+
 def stop_uyarisi(pozisyon: dict, fiyat: float, tur: str) -> str:
     """Stop ya da hedef seviyesine yaklaşma/geçme uyarısı.
 

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'servis/depo.dart';
 import 'servis/egitmen.dart';
 import 'servis/hesap.dart';
 import 'servis/kilit.dart';
+import 'servis/push.dart';
 import 'ekran/kabuk.dart';
 import 'ekran/kilit.dart';
 import 'tema.dart';
@@ -16,6 +19,9 @@ Future<void> main() async {
   await hesap.yukle();
   // Kurulu bir PIN varsa uygulama KİLİTLİ açılır.
   await kilit.yukle();
+  // Firebase yoksa sessizce kapalı kalır; uygulama push'suz çalışır.
+  // await edilmiyor: izin diyaloğu ve ağ turu açılışı geciktirmemeli.
+  unawaited(push.baslat());
   // Depo her değiştiğinde geciktirmeli bulut yedeği. Girişli değilse
   // dinleyici hiçbir şey yapmaz — ağ isteği de yok.
   hesap.otomatikBasla();

@@ -274,20 +274,21 @@ def calistir(sermaye: float = 1000.0, evren_adi: str = "bist100",
         # gönderilir. Telegram çökerse günlük iş başarılı sayılmalı —
         # bildirim işin kendisi değil, üstüne eklenen katman.
         try:
-            from . import bildirim as _b, telegram as _t
-            if _t.kurulu_mu():
-                try:
-                    _siniflar = ogrenme.strateji_siniflari()
-                except Exception:
-                    _siniflar = {}
-                _ozet = dict(ozet)
-                _ozet["kap_bildirim"] = (rapor["adimlar"].get("kap") or {}).get(
-                    "bildirim", 0)
-                if _t.gonder(_b.gunluk_ozet(_ozet, _siniflar)):
-                    yaz("       Telegram bildirimi gönderildi")
-                    rapor["adimlar"]["bildirim"] = {"gonderildi": True}
-                else:
-                    rapor["adimlar"]["bildirim"] = {"gonderildi": False}
+            from . import bildirim as _b, haberci as _h
+            try:
+                _siniflar = ogrenme.strateji_siniflari()
+            except Exception:
+                _siniflar = {}
+            _ozet = dict(ozet)
+            _ozet["kap_bildirim"] = (rapor["adimlar"].get("kap") or {}).get(
+                "bildirim", 0)
+            _bas, _gov = _b.gunluk_push(_ozet)
+            _r = _h.yolla(_b.gunluk_ozet(_ozet, _siniflar), _bas, _gov,
+                          veri={"ekran": "gun_ozeti"})
+            rapor["adimlar"]["bildirim"] = _r
+            if _r.get("telegram") or _r["push"]["gonderildi"]:
+                yaz(f"       bildirim: telegram={_r.get('telegram')} "
+                    f"push={_r['push']['gonderildi']}")
         except Exception as e:
             rapor["adimlar"]["bildirim"] = {"hata": str(e)[:150]}
 

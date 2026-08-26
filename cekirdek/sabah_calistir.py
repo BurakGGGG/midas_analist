@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 
 
 def main() -> int:
-    from . import sabah, bildirim, telegram
+    from . import sabah, bildirim, haberci
 
     plan = sabah.hazirla()
     if not plan.get("gonder"):
@@ -27,17 +27,21 @@ def main() -> int:
         print("hatırlatma yok — mesaj boş üretildi")
         return 0
 
-    if not telegram.kurulu_mu():
-        print("Telegram kurulu değil; mesaj gönderilmedi:\n")
+    kanallar = haberci.acik_kanallar()
+    if not any(kanallar.values()):
+        print("Hiçbir bildirim kanalı kurulu değil; mesaj gönderilmedi:\n")
         print(metin)
         return 0
 
-    if telegram.gonder(metin):
+    bas, gov = bildirim.sabah_push(plan)
+    r = haberci.yolla(metin, bas, gov, veri={"ekran": "tarama"})
+    if r.get("telegram") or r["push"]["gonderildi"]:
         print(f"{len(plan['emirler'])} emir hatırlatıldı "
-              f"({plan.get('tarih')} kapanışına göre)")
+              f"({plan.get('tarih')} kapanışına göre) — "
+              f"telegram={r.get('telegram')} push={r['push']['gonderildi']}")
         return 0
 
-    print("HATA: Telegram gönderimi başarısız", file=sys.stderr)
+    print(f"HATA: hiçbir kanala gönderilemedi ({r})", file=sys.stderr)
     return 1
 
 

@@ -3,6 +3,9 @@
          debug/profile manifestlerinde vardı; release APK onu almaz ve
          uygulama hiçbir sunucuya ulaşamazdı. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13+ bildirim izni. Bu satır olmadan izin diyaloğu hiç
+         çıkmaz ve push sessizce hiç görünmez. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Midas Analist"
         android:name="${applicationName}"

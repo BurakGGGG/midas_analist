@@ -219,6 +219,24 @@ class Api {
           '/hesap/parola', {'eski': eski, 'yeni': yeni},
           jeton: jeton, uzun: true));
 
+  Future<Map<String, dynamic>> cihazKaydet(
+          String oturum, String pushJetonu, String platform) async =>
+      Map<String, dynamic>.from(await _post(
+          '/cihaz', {'jeton': pushJetonu, 'platform': platform},
+          jeton: oturum));
+
+  Future<void> cihazSil(String oturum, String pushJetonu) async {
+    final c = await http.delete(
+        _u('/cihaz', {'jeton': pushJetonu}),
+        headers: {..._basliklar, 'Authorization': 'Bearer $oturum'}).timeout(_kisa);
+    if (c.statusCode != 200) {
+      throw ApiHata('Cihaz kaydı silinemedi (${c.statusCode})', kod: c.statusCode);
+    }
+  }
+
+  Future<Map<String, dynamic>> bildirimDurum(String oturum) async =>
+      Map<String, dynamic>.from(await _get('/bildirim/durum', jeton: oturum));
+
   Future<Map<String, dynamic>> yedekGetir(String jeton) async =>
       Map<String, dynamic>.from(await _get('/yedek', jeton: jeton, uzun: true));
 

@@ -453,29 +453,35 @@ def _komut_isle(metin: str) -> str:
 
 def main() -> int:
     from . import ortam  # noqa: F401  (.env yükler)
-    from . import bildirim, izleme, telegram
+    from . import bildirim, haberci, izleme, telegram
 
-    if not telegram.kurulu_mu():
-        # Yapılandırılmamış olmak HATA DEĞİL — Telegram isteğe bağlı.
-        # Çıkış kodu 1 dönseydi timer her 5 dakikada bir başarısız birim
+    kanallar = haberci.acik_kanallar()
+    if not any(kanallar.values()):
+        # Hiçbir kanal yoksa yapacak iş yok. Yapılandırılmamış olmak HATA
+        # DEĞİL: çıkış kodu 1 dönseydi timer her dakika başarısız birim
         # kaydı düşürür, journal kırmızıya boğulur ve gerçek bir arıza
-        # çıktığında kimse fark etmezdi. Bildirimlerdeki "yanlış alarm
-        # gerçek alarmı değersizleştirir" ilkesi burada da geçerli.
-        print("Telegram yapılandırılmamış — bot turu atlandı "
-              "(.env: MIDAS_TELEGRAM_TOKEN / MIDAS_TELEGRAM_SOHBET)")
+        # çıktığında kimse fark etmezdi. "Yanlış alarm gerçek alarmı
+        # değersizleştirir" ilkesi burada da geçerli.
+        print("Hiçbir bildirim kanalı yapılandırılmamış — bot turu atlandı "
+              "(.env: MIDAS_TELEGRAM_TOKEN / MIDAS_FCM_ANAHTAR)")
         return 0
 
-    # ── 1) gelen komutlar (her saatte işlenir)
-    # 45 sn bekle: 1 dakikalık timer ile birleşince komut neredeyse
-    # anında cevaplanır.
-    mesajlar, en_son = telegram.komutlari_oku(izleme.son_id(), bekle=45)
-    for m in mesajlar:
-        try:
-            telegram.gonder(_komut_isle(m["metin"]))
-        except Exception as e:
-            telegram.gonder(f"Komut işlenemedi: {str(e)[:120]}")
-    if en_son != izleme.son_id():
-        izleme.son_id(en_son)
+    # ── 1) gelen komutlar — YALNIZCA Telegram'a özgü
+    # Komut okumak iki yönlü bir kanal ister; push tek yönlüdür. Bu blok
+    # eskiden tüm fonksiyonu kapıda tutuyordu: Telegram kurulu değilse
+    # stop alarmı da çalışmıyordu. Artık yalnızca kendi bölümünü atlıyor,
+    # çünkü stop uyarısı push ile de gidebilir.
+    if kanallar["telegram"]:
+        # 45 sn bekle: 1 dakikalık timer ile birleşince komut neredeyse
+        # anında cevaplanır.
+        mesajlar, en_son = telegram.komutlari_oku(izleme.son_id(), bekle=45)
+        for m in mesajlar:
+            try:
+                telegram.gonder(_komut_isle(m["metin"]))
+            except Exception as e:
+                telegram.gonder(f"Komut işlenemedi: {str(e)[:120]}")
+        if en_son != izleme.son_id():
+            izleme.son_id(en_son)
 
     # ── 1b) NÖBET: günlük iş çalıştı mı?
     # Günde en fazla bir kez uyarır. İşaret dosyası izleme defterinde
@@ -484,8 +490,12 @@ def main() -> int:
     try:
         from . import saglik
         uyari = saglik.nobet()
-        if uyari and telegram.gonder(uyari):
-            saglik.uyari_isaretle("gunluk_is")
+        if uyari:
+            r = haberci.yolla(uyari, "Midas · günlük iş çalışmadı",
+                              "18:10 işi bugün çalışmamış görünüyor.",
+                              veri={"ekran": "saglik"})
+            if r.get("telegram") or r["push"]["gonderildi"]:
+                saglik.uyari_isaretle("gunluk_is")
     except Exception:
         pass   # nöbetçi çökerse bot durmasın
 
@@ -496,7 +506,11 @@ def main() -> int:
     seansta = (simdi.weekday() < 5 and 10 <= simdi.hour < 19)
     if seansta and izleme.liste():
         for poz, fiyat, tur in izleme.kontrol(_fiyat_getir):
-            telegram.gonder(bildirim.stop_uyarisi(poz, fiyat, tur))
+            # Stop/hedef gün içinde geçilir ve gerçek para burada
+            # kaybedilir; her açık kanala birden gitmeli.
+            _bas, _gov = bildirim.stop_push(poz, fiyat, tur)
+            haberci.yolla(bildirim.stop_uyarisi(poz, fiyat, tur), _bas, _gov,
+                          veri={"ekran": "portfoy", "sembol": poz.get("sembol", "")})
 
     return 0
 

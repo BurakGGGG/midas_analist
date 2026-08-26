@@ -6,6 +6,21 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase push, google-services.json VARSA açılır.
+//
+// Neden koşullu: o dosya Firebase konsolundan indirilir ve repoya
+// girmez. Eklentiyi koşulsuz uygulasaydık, dosyası olmayan hiç kimse
+// (yeni makine, temiz klasör, CI) projeyi derleyemezdi. Aynı kalıp
+// key.properties için de kullanılıyor.
+val firebaseVar = file("google-services.json").exists()
+if (firebaseVar) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle(
+        "google-services.json yok — push bildirimi kapalı derleniyor. " +
+        "Firebase konsolundan indirip mobil/android/app/ içine koy.")
+}
+
 android {
     namespace = "com.burak.midas_analist"
     compileSdk = flutter.compileSdkVersion
