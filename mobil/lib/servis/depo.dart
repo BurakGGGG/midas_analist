@@ -36,7 +36,18 @@ class Depo extends ChangeNotifier {
   List<Tez> get acikTezler => _tezler.where((t) => t.acik).toList();
   List<Tez> get kapaliTezler => _tezler.where((t) => !t.acik).toList();
 
-  Api get api => Api(_ayarlar.sunucu, anahtar: _ayarlar.apiAnahtar);
+  /// Görsel koşumun gerçek ekranları ağ olmadan çizebilmesi için tek
+  /// dikiş yeri. Üretimde HER ZAMAN null — ayarlardan kurulan gerçek
+  /// istemci kullanılır.
+  ///
+  /// Neden var: Tarama ve Portföy uygulamanın en çok bakılan ekranları ve
+  /// ikisi de ağ verisiyle çiziliyor. Bu kanca olmadan onları gözle
+  /// doğrulamanın yolu yok — bugüne kadar da doğrulanmamışlardı.
+  @visibleForTesting
+  static Api Function()? apiUretici;
+
+  Api get api =>
+      apiUretici?.call() ?? Api(_ayarlar.sunucu, anahtar: _ayarlar.apiAnahtar);
 
   List<ParaHareketi> get hareketler => List.unmodifiable(_hareketler);
 

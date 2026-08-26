@@ -109,13 +109,24 @@ class _TaramaDurum extends State<TaramaEkran> {
                         children: [
                           _ozet(c, sem),
                           const SizedBox(height: 14),
+                          // Karantina notu listenin ÜSTÜNDE, yoğunlaşma
+                          // notu ALTINDA. İkisi farklı soruya cevap veriyor:
+                          // karantina "bu sinyallere güvenilir mi" diyor ve
+                          // okumadan ÖNCE bilinmeli; yoğunlaşma ise "bu
+                          // sinyaller birbirinden bağımsız mı" diyor ve
+                          // ancak listeyi gördükten SONRA anlam kazanıyor.
+                          //
+                          // Ayrıca ikisi üst üste duruyordu: iki tam
+                          // genişlik uyarı kutusu, tek bir hisse görünmeden
+                          // önce ekranın yarısını yiyordu.
                           ..._karantinaNotu(c, sem),
-                          ..._yogunlasmaNotu(c, sem),
                           ...adaylar.map((a) => Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: _adayKart(c, sem, a as Map<String, dynamic>),
                               )),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 4),
+                          ..._yogunlasmaNotu(c, sem),
+                          const SizedBox(height: 10),
                           Not(
                             'Skor bir kesinlik değil, SIRALAMA aracıdır. '
                             '80 puanlık hisse de zarar ettirebilir.',

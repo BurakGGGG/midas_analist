@@ -14,7 +14,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:convert';
+
 import 'package:midas_analist/ekran/hesap.dart';
+import 'package:midas_analist/ekran/portfoy.dart';
+import 'package:midas_analist/ekran/tarama.dart';
+import 'package:midas_analist/servis/api.dart';
 import 'package:midas_analist/ekran/kilit.dart';
 import 'package:midas_analist/ekran/sermaye.dart';
 import 'package:midas_analist/ekran/sozluk.dart';
@@ -53,6 +58,36 @@ Future<void> _fontuYukle() async {
         Future.value(ByteData.view(ikonYol.readAsBytesSync().buffer)));
     await i.load();
   }
+}
+
+/// Ağ yerine diskteki gerçek sunucu yanıtlarını döndürür.
+///
+/// Veri UYDURMA DEĞİL: gerçek /tarama, /portfoy/kontrol ve /risk/portfoy
+/// yanıtları kırpılarak kaydedildi. Uydurma veri gerçek render sorunlarını
+/// göstermez — uzun sembol adları, karantina rozetleri, negatif kâr ve
+/// sektör uyarısı ancak gerçek veriyle ekrana gelir.
+class _SahteApi extends Api {
+  _SahteApi() : super('http://sahte');
+
+  Map<String, dynamic> _oku(String ad) => Map<String, dynamic>.from(
+      jsonDecode(File('test/gorunum/$ad').readAsStringSync()) as Map);
+
+  @override
+  Future<Map<String, dynamic>> tarama({
+    required double sermaye, bool sadeceSinyal = false,
+    String evren = 'bist100', double riskYuzde = 1.5,
+    double azamiPozisyon = 35, int adet = 40,
+  }) async =>
+      _oku('tarama_veri.json');
+
+  @override
+  Future<Map<String, dynamic>> portfoyKontrol(
+          List<Pozisyon> pozlar, double sermaye) async =>
+      Map<String, dynamic>.from(_oku('portfoy_veri.json')['portfoy'] as Map);
+
+  @override
+  Future<Map<String, dynamic>> riskPortfoy(List<Pozisyon> pozlar) async =>
+      Map<String, dynamic>.from(_oku('portfoy_veri.json')['risk'] as Map);
 }
 
 void main() {
@@ -285,5 +320,41 @@ void main() {
     await t.pump(const Duration(milliseconds: 100));
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/kilit.png'));
+  });
+
+  // ── ana ekranlar ─────────────────────────────────────────────────────────
+  // En çok bakılan iki ekran ve ikisi de ağ verisiyle çiziliyor. Depo'daki
+  // apiUretici kancası olmadan gözle doğrulanamıyorlardı.
+
+  testWidgets('tarama', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+
+    await t.binding.setSurfaceSize(const Size(420, 1500));
+    await t.pumpWidget(_sarmala(const TaramaEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/tarama.png'));
+  });
+
+  testWidgets('portfoy', (t) async {
+    SharedPreferences.setMockInitialValues({
+      'pozisyonlar_v1':
+          '[{"sembol":"GESAN","adet":3,"giris":84.5,"stop":78.2,'
+          '"hedef":101.4,"tarih":"2026-08-14","strateji":"kirilim"},'
+          '{"sembol":"THYAO","adet":1,"giris":312.0,"stop":296.4,'
+          '"hedef":351.0,"tarih":"2026-08-20","strateji":"trend"}]',
+    });
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+
+    await t.binding.setSurfaceSize(const Size(420, 1400));
+    await t.pumpWidget(_sarmala(const PortfoyEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/portfoy.png'));
   });
 }

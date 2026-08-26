@@ -72,20 +72,24 @@ class _PortfoyDurum extends State<PortfoyEkran> {
                     ? HataGorunum(_hata!, tekrar: _getir)
                     : RefreshIndicator(
                         onRefresh: _getir,
+                        // Yatay dolgu çocuklarda: Baslik bileşeni kendi
+                        // 16 px'ini taşıyor, listede de olsaydı başlık
+                        // kartlardan 16 px içeride kalırdı (bkz. bugun.dart).
                         child: ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                          padding: const EdgeInsets.only(top: 14, bottom: 24),
                           children: [
-                            _ozet(c, sem),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: _ozet(c, sem),
+                            ),
                             const SizedBox(height: 14),
                             ...((_veri?['pozisyonlar'] as List?) ?? []).map((p) =>
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                                   child: _kart(c, sem, p as Map<String, dynamic>),
                                 )),
-                            if (_risk != null && _risk!['hata'] == null) ...[
-                              const SizedBox(height: 6),
+                            if (_risk != null && _risk!['hata'] == null)
                               _riskKart(c, sem),
-                            ],
                           ],
                         ),
                       ),
@@ -293,29 +297,38 @@ class _PortfoyDurum extends State<PortfoyEkran> {
   Widget _riskKart(BuildContext c, Sem sem) {
     final r = _risk!;
     final kor = (r['ortalama_korelasyon'] as num?)?.toDouble();
-    return Kutu(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('PORTFÖY RİSKİ',
-              style: Theme.of(c).textTheme.labelSmall?.copyWith(
-                  color: sem.aksan, letterSpacing: 1.1)),
-          const SizedBox(height: 8),
-          Satir('Yıllık oynaklık',
-              '%${tl(r['portfoy_oynaklik_yuzde'] as num?, basamak: 1)}'),
-          Satir('Ortalama korelasyon', tl(kor),
-              renk: (kor ?? 0) > 0.7 ? sem.eksi : null),
-          Satir('Etkin hisse sayısı',
-              '${tl(r['etkin_hisse_sayisi'] as num?, basamak: 1)} '
-              '(nominal ${r['nominal_hisse_sayisi']})'),
-          Satir('Çeşitlendirme kazancı',
-              '%${tl(r['cesitlendirme_kazanci_yuzde'] as num?, basamak: 1)}'),
-          if ('${r['uyari']}'.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Not('${r['uyari']}', ikon: Icons.warning_amber_sharp, renk: sem.eksi),
-          ],
-        ],
-      ),
+    // Başlık uygulamanın Baslik bileşeni: her bölüm başlığında olan fosfor
+    // aksan çubuğu burada yoktu ve bölüm, kartın içinde kaybolmuş
+    // görünüyordu. Sözlükte de aynı hata vardı.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Baslik('Portföy riski'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Kutu(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Satir('Yıllık oynaklık',
+                  '%${tl(r['portfoy_oynaklik_yuzde'] as num?, basamak: 1)}'),
+              Satir('Ortalama korelasyon', tl(kor),
+                  renk: (kor ?? 0) > 0.7 ? sem.eksi : null),
+              Satir('Etkin hisse sayısı',
+                  '${tl(r['etkin_hisse_sayisi'] as num?, basamak: 1)} '
+                  '(nominal ${r['nominal_hisse_sayisi']})'),
+              Satir('Çeşitlendirme kazancı',
+                  '%${tl(r['cesitlendirme_kazanci_yuzde'] as num?, basamak: 1)}'),
+              if ('${r['uyari']}'.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Not('${r['uyari']}',
+                    ikon: Icons.warning_amber_sharp, renk: sem.eksi),
+              ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
