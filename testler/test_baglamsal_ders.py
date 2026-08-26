@@ -42,6 +42,21 @@ def test_eslesen_ders_gercekten_var():
         assert kod in DERS_HARITA, f"{kod} müfredatta yok"
 
 
+def test_kirilim_sinyali_retest_dersini_getirir():
+    """Kırılım sinyali olan gün, sorulacak soru 'ne zaman alacağım'dır."""
+    assert e.baglamsal_ders({"kirilim_sinyali": True})["kod"] == "d1308"
+
+
+def test_derslerin_sorulari_gercekten_var():
+    """Ders var olmayan bir soru koduna işaret ederse CLI kullanıcıya
+    bulunmayan bir kod gösterir ve o kod okunmuş sayılır."""
+    from cekirdek.egitmen_sorular import TUM_SORULAR
+    kodlar = {q.kod for q in TUM_SORULAR}
+    for d in DERS_HARITA.values():
+        for k in d.sorular:
+            assert k in kodlar, f"{d.kod} -> {k} soru bankasında yok"
+
+
 # ── her zaman bir cevap ────────────────────────────────────────────────────
 
 def test_ozel_durum_yoksa_mufredattan_devam():
@@ -105,6 +120,23 @@ def test_iyi_cesitlendirme_tetiklemez():
     d = e.gunun_durumu(tarama={"yogunlasma": {
         "yeterli_mi": True, "adet": 4, "bagimsiz_bahis": 3.5}})
     assert d["yogunlasma"] is False
+
+
+def test_kirilim_sinyali_ozetten_okunur():
+    """Strateji adı `cekirdek/strateji.py` ile aynı yazılmalı; sessizce
+    kayarsa ders hiç tetiklenmez ve kimse fark etmez."""
+    ozet = {"sinyal_veren": [{"sembol": "X", "sinyaller": ["tepki"]},
+                             {"sembol": "Y", "sinyaller": ["kirilim"]}]}
+    assert e.gunun_durumu(ozet=ozet)["kirilim_sinyali"] is True
+
+
+def test_kirilim_yoksa_tetiklenmez():
+    ozet = {"sinyal_veren": [{"sembol": "X", "sinyaller": ["trend"]}]}
+    assert e.gunun_durumu(ozet=ozet)["kirilim_sinyali"] is False
+
+
+def test_sinyalsiz_gunde_kirilim_yok():
+    assert e.gunun_durumu(ozet={})["kirilim_sinyali"] is False
 
 
 def test_reel_getiri_ozetten_okunur():

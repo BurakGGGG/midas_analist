@@ -215,7 +215,10 @@ class Egitmen {
   // 3: m13 grafik okuma modülü eklendi (7 ders + şemalar).
   // Bu sayı artmazsa telefondaki eski banka kullanılmaya devam eder.
   // 4: Sharpe risksiz getiriye göre düzeltildi, ders rakamları değişti.
-  static const mufredatSurum = 4;
+  // 5: m13'e 4 ders eklendi — retest, mum sözlüğü, formasyon sicili,
+  //    zaman serisi. Bu sayı 4'te kalsaydı telefon yeni dersleri hiç
+  //    indirmezdi: mufredatVar true kalır ve istek atılmaz.
+  static const mufredatSurum = 5;
 
   List<EgitmenModul> moduller = [];
   Map<String, DersKaydi> dersKayit = {};

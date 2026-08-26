@@ -201,6 +201,133 @@ def zaman_dilimi() -> dict:
     )
 
 
+def retest() -> dict:
+    """Kırılım, geri dönüş ve rol değişimi tek çizimde."""
+    # Seviye y=34. Çizgi önce ona üç kez dokunup dönüyor (direnç), sonra
+    # aşıyor, sonra geri gelip üstünde tutunuyor (retest), sonra devam.
+    yol = [[0, 12], [10, 33], [20, 22], [32, 34], [42, 24], [52, 33],
+           [60, 44], [68, 50], [78, 36], [86, 48], [98, 58]]
+    return _sema(
+        en=110.0, boy=60.0,
+        baslik="Kırılım ve retest",
+        aciklama=("Fiyat aynı seviyeden üç kez döndü, sonra aştı. Geri "
+                  "dönüp o seviyeye dokunmasına RETEST denir: kırılan "
+                  "direnç bu kez destek gibi davranır."),
+        cizgiler=[{"nokta": yol, "renk": "aksan", "kalin": 2.4}],
+        seviyeler=[
+            # Aynı y, iki parça: solda direnç, sağda destek. Rol değişimi
+            # tek bir çizgide anlatılamaz — renk değişimi anlatır.
+            {"y": 34, "x1": 4, "x2": 58, "ad": "direnç", "renk": "eksi"},
+            {"y": 34, "x1": 60, "x2": 106, "ad": "artık destek",
+             "renk": "arti"},
+        ],
+        etiketler=[
+            {"x": 60, "y": 56, "ad": "kırılım", "hiza": "orta"},
+            {"x": 80, "y": 28, "ad": "retest", "hiza": "orta"},
+        ],
+        sonuc=("Retest daha iyi giriş fiyatı verir: stop kırılan seviyenin "
+               "altında sabit kaldığı için hisse başına risk küçülür. "
+               "Bedeli, retest hiç gelmezse işlemin hiç olmamasıdır."),
+    )
+
+
+def mum_sozlugu() -> dict:
+    """Çekiç ve asılı adam: aynı dört sayı, zıt anlam."""
+    # İki mum BİLEREK aynı ölçüde: gövde 2, alt fitil 12, üst fitil 1.
+    # Şemanın tek iddiası bu — şekil tek başına hiçbir şey söylemiyor.
+    dusus = [[6, 50], [14, 42], [22, 36], [30, 30]]
+    yukselis = [[68, 14], [76, 22], [84, 28], [92, 34]]
+    return _sema(
+        en=120.0, boy=60.0,
+        baslik="Aynı şekil, zıt anlam",
+        aciklama=("Soldaki ve sağdaki mum birebir aynı: kısa gövde, uzun "
+                  "alt fitil. Farkı yaratan tek şey solunda kalan grafik — "
+                  "biri düşüşün dibinde, diğeri yükselişin tepesinde."),
+        cizgiler=[
+            {"nokta": dusus, "renk": "solgun", "kalin": 1.8},
+            {"nokta": yukselis, "renk": "solgun", "kalin": 1.8},
+        ],
+        mumlar=[
+            {"x": 38, "a": 26, "y": 29, "d": 14, "k": 28, "genislik": 9},
+            {"x": 100, "a": 38, "y": 41, "d": 26, "k": 40, "genislik": 9},
+        ],
+        etiketler=[
+            {"x": 38, "y": 4, "ad": "ÇEKİÇ", "hiza": "orta"},
+            {"x": 100, "y": 4, "ad": "ASILI ADAM", "hiza": "orta"},
+            {"x": 18, "y": 54, "ad": "düşüş trendi", "hiza": "orta"},
+            {"x": 78, "y": 8, "ad": "yükseliş trendi", "hiza": "orta"},
+        ],
+        sonuc=("Sıralama şudur: önce trend, sonra konum, en son şekil. "
+               "Şekille başlarsan gerisini kendine uydurursun — beynin "
+               "gürültüde desen görmek üzere kuruludur."),
+    )
+
+
+def formasyon_sicili() -> dict:
+    """Bulkowski'nin dönüş oranları, yazı tura çizgisiyle birlikte."""
+    # Yatay çubuk: seviye çizgisinin uzunluğu oranı temsil ediyor.
+    # x = 10 + oran * 0,8  →  %50 ekseni tam ortada (x=50) durur.
+    def bar(oran: float) -> float:
+        return 10.0 + oran * 0.8
+
+    return _sema(
+        en=100.0, boy=60.0,
+        baslik="Formasyonlar gerçekte ne kadar tutuyor",
+        aciklama=("Bulkowski'nin 103 mum formasyonunu taradığı ölçümünden "
+                  "üç tanesi. Çubuk uzunluğu dönüş oranı; kesikli çizgi "
+                  "yazı tura sınırı."),
+        cizgiler=[
+            {"nokta": [[50, 6], [50, 54]], "renk": "eksi", "kalin": 1.6,
+             "kesik": True},
+        ],
+        seviyeler=[
+            {"y": 46, "x1": 10, "x2": bar(60), "ad": "Çekiç %60",
+             "renk": "aksan"},
+            {"y": 34, "x1": 10, "x2": bar(63), "ad": "Yutan boğa %63",
+             "renk": "aksan"},
+            {"y": 22, "x1": 10, "x2": bar(79), "ad": "Yutan ayı %79",
+             "renk": "arti"},
+        ],
+        etiketler=[
+            {"x": 50, "y": 58, "ad": "yazı tura %50", "hiza": "orta"},
+            # Şemanın asıl dersi bu etikette: en uzun çubuk en iyi
+            # formasyon değil. Dönüş oldu demek, kazandın demek değil.
+            {"x": 74, "y": 16, "ad": "ama hareketi kısa", "hiza": "orta"},
+        ],
+        sonuc=("Üçü de yazı turadan iyi. Ama yutan ayı — en yüksek dönüş "
+               "oranı — dönüşten sonraki hareket sıralamasında 103 "
+               "formasyon içinde 91'inci. İsabet oranı kazanç değildir."),
+    )
+
+
+def zaman_serisi() -> dict:
+    """Gördüğün fiyat = trend + gürültü. Hangisi büyük?"""
+    trend = [[0, 16], [25, 24], [50, 32], [75, 40], [100, 48]]
+    fiyat = [[0, 14], [6, 22], [12, 16], [18, 26], [24, 20], [30, 30],
+             [36, 24], [42, 34], [48, 28], [54, 38], [60, 32], [66, 42],
+             [72, 36], [78, 46], [84, 40], [90, 50], [96, 44], [100, 52]]
+    return _sema(
+        en=100.0, boy=60.0,
+        baslik="Trend ve gürültü",
+        aciklama=("Kalın çizgi fiyatın gerçek yönü, ince çizgi ekranda "
+                  "gördüğün fiyat. Aradaki mesafenin adı gürültü ve günlük "
+                  "grafikte hareketin çoğunu o oluşturur."),
+        cizgiler=[
+            {"nokta": trend, "renk": "aksan", "kalin": 2.6},
+            {"nokta": fiyat, "renk": "solgun", "kalin": 1.4},
+        ],
+        oklar=[{"x1": 78, "y1": 41, "x2": 78, "y2": 45, "renk": "uyari"}],
+        etiketler=[
+            {"x": 50, "y": 57, "ad": "gördüğün fiyat", "hiza": "orta"},
+            {"x": 20, "y": 8, "ad": "trend", "hiza": "orta"},
+            {"x": 74, "y": 52, "ad": "gürültü", "hiza": "orta"},
+        ],
+        sonuc=("Bir kural ancak gürültüden büyük bir sinyal yakalarsa "
+               "değerlidir. Teknik analizin zor olmasının sebebi budur: "
+               "ekrandaki hareketin çoğu bir şey anlatmıyor."),
+    )
+
+
 SEMALAR = {
     "destek_direnc": destek_direnc,
     "mum_anatomisi": mum_anatomisi,
@@ -208,6 +335,10 @@ SEMALAR = {
     "mum_formasyonlari": mum_formasyonlari,
     "bosluk": bosluk,
     "zaman_dilimi": zaman_dilimi,
+    "retest": retest,
+    "mum_sozlugu": mum_sozlugu,
+    "formasyon_sicili": formasyon_sicili,
+    "zaman_serisi": zaman_serisi,
 }
 
 

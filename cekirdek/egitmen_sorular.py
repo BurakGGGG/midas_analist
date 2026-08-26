@@ -356,6 +356,50 @@ Kararı, verildiği andaki bilgiye göre değerlendir — sonucuna göre değil.
 demek. Buna SONUÇ YANILGISI denir ve en tehlikeli hatadır: kötü kararla
 kazanmak, o kararı tekrarlamana ve bu sefer daha büyük yapmana yol açar.""",
  anahtar=["yanılma koşulu", "önceden yazmak", "tez bozulması", "sonuç yanılgısı"]),
+
+Soru("t21", 1, "teknik",
+ "Bir hisse direnci kırdı ama sen kaçırdın. Geri çekilmeyi (retest) beklemeli misin?",
+ """Cevap "evet" ya da "hayır" değil: bu bir TERCİHTİR ve iki tarafı da vardır.
+
+BEKLERSEN kazandığın şey giriş fiyatıdır. Stop kırılan seviyenin altında
+sabit kaldığı için, giriş o seviyeye yaklaştıkça hisse başına riskin küçülür
+ve aynı risk bütçesiyle daha çok adet alırsın. Ayrıca sahte kırılımların bir
+kısmı sen girmeden elenir.
+
+BEKLERSEN kaybettiğin şey en iyi hareketlerdir. Arz gerçekten bittiyse fiyat
+geri dönmez. Retest bekleyen kişi güçlü kırılımları sistematik olarak
+kaçırır; elinde zayıf olanlar kalır.
+
+Kritik nokta: retest ile BAŞARISIZ KIRILIM olduğu anda aynı görünür. İkisi de
+"fiyat geri geldi"dir. Bu yüzden retest'ten girerken de stop şarttır.""",
+ tuzak=""""Kırılımdan sonra mutlaka retest gelir" demek. Gelmeyebilir.
+
+Asıl zarar da orada değil: bekleyen kişi fiyat dönmeden yükselince
+dayanamayıp çok daha yukarıdan, uzak bir stopla girer. Kuralı iki kez bozar.
+Beklemeye karar verdiysen, retest gelmediğinde İŞLEM YAPMAMAK kuralın
+parçasıdır.""",
+ anahtar=["rol değişimi", "giriş fiyatı", "kaçırılan hareket", "stop"]),
+
+Soru("t22", 1, "teknik",
+ "Grafikte kısa gövdeli, uzun alt fitilli bir mum gördün. Bu alım sinyali mi?",
+ """Tek başına hiçbir şey. Aynı şekil iki zıt anlama gelir ve hangisi olduğunu
+mumun KENDİSİ söylemez:
+
+· Düşüşün dibinde oluştuysa ÇEKİÇtir — satıcılar bastırdı, alıcılar günü geri
+  aldı. Dönüş adayı.
+· Yükselişin tepesinde oluştuysa ASILI ADAMdır — yükseliş içinde ilk ciddi
+  satış görüldü. Uyarı işareti.
+
+Dört fiyat (açılış, en yüksek, en düşük, kapanış) birebir aynı olabilir.
+Farkı yaratan tek şey mumun SOLUNDA kalan grafiktir.
+
+Doğru sıralama: önce trend, sonra konum, en son şekil.""",
+ tuzak="""Şekli tanıyıp yeri kontrol etmemek. "Çekiç gördüm, alıyorum" diyen
+kişi çoğu zaman bir yükselişin tepesinde asılı adam satın alır.
+
+İkinci tuzak: şekli gördükten sonra trendi ona uydurmak. Yeterince bakarsan
+her grafikte istediğin trendi bulursun.""",
+ anahtar=["konum", "çekiç", "asılı adam", "trend önce"]),
 ]
 
 
@@ -693,6 +737,32 @@ kâr kalitesi ölçmez. Bu sistem banka için o oranı kapatır.""",
  tuzak="""'Nakit kraldır' deyip kârı görmezden gelmek de hata. Ağır yatırım
 dönemindeki sağlıklı bir şirket negatif serbest nakit akışı gösterir.""",
  anahtar=["muhasebe takdiri", "kâr kalitesi", "birlikte okuma", "banka istisnası"]),
+
+Soru("o16", 2, "teknik",
+ "Bir formasyonun 'vakaların %79'unda çalıştığı' söyleniyor. Bu iyi bir kural mı?",
+ """Bilemezsin — çünkü cümle eksik. Üç şey sorulmadan bu sayı bir şey ifade
+etmez:
+
+1) "ÇALIŞMAK" NE? Yön döndü mü, yoksa para kazandın mı? İkisi aynı değil.
+2) NEYE GÖRE? Yükselen piyasada fiyat zaten günlerin yarısından fazlasında
+   yükselir. Karşılaştırma yapılacak sayı TABAN ORANDIR.
+3) ÖRNEKLEM NE? Hangi piyasa, hangi yıllar, kaç örnek?
+
+Somut örnek: Bulkowski'nin ölçümünde YUTAN AYI vakaların %79'unda dönüş
+üretiyor — 103 formasyon içinde 5'inci. Kulağa harika geliyor. Ama dönüşten
+SONRAKİ hareketin büyüklüğünde aynı formasyon 91'inci sırada. Yani dört
+vakanın üçünde haklı çıkarsın ve yine de para kazanamayabilirsin, çünkü
+hareket kısa.
+
+Bir kuralın değeri isabet oranı değil BEKLENEN DEĞERİDİR: isabet oranı ×
+ortalama kazanç − ıskalama oranı × ortalama kayıp.""",
+ tuzak="""Yüksek isabet oranını iyi kural sanmak. %90 isabetli bir kural,
+kaybettiği %10'da kazandığının on katını kaybediyorsa seni batırır.
+
+Simetriği de var: %35 isabetli bir trend takip stratejisi, kazandığında çok
+kazanıyorsa gayet kârlıdır. İsabet oranına bakarak strateji seçmek, en sık
+yapılan ve en pahalı ölçüm hatasıdır.""",
+ anahtar=["taban oran", "beklenen değer", "isabet oranı", "hareket büyüklüğü"]),
 ]
 
 
@@ -1029,6 +1099,32 @@ düşünceni sonucun bulandırmasını engeller.""",
  tuzak="""'Kazandım demek ki doğruydu.' Kumarhanede rulette kırmızıya koyup
 kazanan biri de kazanmıştır. Süreç ile sonucu ayır.""",
  anahtar=["sonuç yanılgısı", "süreç vs sonuç", "olasılık", "tez kaydı"]),
+
+Soru("u16", 3, "usta",
+ "Bir kuralı geçmiş veride test ederken veriyi karıştırıp (shuffle) rastgele bölmek neden yasaktır?",
+ """Çünkü fiyat bir ZAMAN SERİSİDİR: sıra bilginin kendisidir. Veriyi
+karıştırmak, geleceğin bilgisini geçmişe sızdırmaktır. Model ya da kural,
+sınavda göremeyeceği bir şeyi eğitimde görmüş olur; çıkan sonuç sahtedir.
+
+Doğru yöntem kronolojiktir: kuralı geçmişin bir bölümünde kur, DAHA SONRAKİ
+bölümde — hiç bakmadığın veride — sına.
+
+Aynı hatanın ikinci hâli AŞIRI UYUMdur (overfitting): kuralı geçmişin
+tamamına uydurup "bakın %95 tutturdu" demek. Denenen parametre sayısı
+arttıkça geçmiş güzelleşir ve gelecek kötüleşir.
+
+Üçüncü hâli DURAĞANLIKtır: fiyat seviyesi zamanla kayar, özellikle
+enflasyonda. "50 TL altı ucuzdur" kuralı iki yıl sonra bambaşka bir şey
+ölçer. Kurallar orana dayanmalıdır — RSI, ATR'nin fiyata oranı, ortalamaya
+uzaklık, 60 günlük getiri. Bunlar fiyat seviyesinden bağımsızdır.""",
+ tuzak="""Backtest'i "en iyi ayarları bulma" işi sanmak. Parametreleri
+geçmişte en çok kazandıran değerlere çekmenin sonucu her zaman güzel görünür
+— çünkü aradığın şeyi bulana kadar aramışsındır.
+
+Sağlamlık ölçütü: bir ayarı biraz değiştirdiğinde sonuç dramatik
+değişiyorsa, o ayar veriye uydurulmuştur. Sağlam kural komşu ayarlarda da
+benzer sonuç verir.""",
+ anahtar=["sıra bozulamaz", "aşırı uyum", "durağanlık", "kronolojik sınama"]),
 ]
 
 TUM_SORULAR = TEMEL + ORTA + USTA

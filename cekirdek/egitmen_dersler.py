@@ -1447,7 +1447,7 @@ Ve bu %6'nın ne kadarı yeni mağazadan, ne kadarı mevcut mağazadan geliyor?
 
 Yeni mağaza açarak büyümek sermaye gerektirir ve bir noktada doygunluğa ulaşır.
 Aynı mağaza büyümesi ise sürdürülebilir bir güçtür.""",
- sorular=["u09", "d304"], sure=8),
+ sorular=["u09"], sure=8),
 
 Ders("d505", "Enerji, elektrik ve altyapı",
  "Regüleli ve borçlu iş modellerini, tahvil benzeri davranışlarını anlamak.",
@@ -3150,11 +3150,17 @@ Bilgi arttıkça, bilgiye duyulan güven bilginin kendisinden hızlı artar.
 #
 # Bu modülün her dersinin bir ŞEMASI var (egitmen_sema.py) — kavramı
 # gerçek verinin gürültüsü içinde değil, temiz bir çizimde gösteriyor.
+#
+# d1308-d1311 sonradan eklendi. Sebep: ilk yedi ders formasyonların NE
+# olduğunu anlatıyordu ama iki soruyu cevapsız bırakıyordu — kırılımı ne
+# zaman almalı (d1308) ve bu formasyonlar gerçekte ne kadar tutuyor
+# (d1310). İkincisi olmadan modül, ölçmediği bir şeyi öğretmiş oluyordu.
 # ═══════════════════════════════════════════════════════════════════
 
 M13 = Modul("m13", "Grafik okuma",
             "Göstergelerden önce grafiğin kendisi: mum ne anlatır, destek "
-            "nedir, trend nasıl çizilir. Her ders bir şemayla.", 1, [
+            "nedir, trend nasıl çizilir — ve bunların sicili ne. Her ders "
+            "bir şemayla.", 1, [
 
 Ders("d1301", "Grafik türleri ve neden mum",
  "Çizgi, bar ve mum grafiklerinin farkını ve mumun neden standart olduğunu görmek.",
@@ -3381,6 +3387,347 @@ Sinyal vadeleri de buna göre: 1, 5 ve 20 günlük.""",
 günlükten haftalığa geçip "aslında trend hâlâ yukarı" demek, analiz
 değil kendini kandırmadır. Zaman dilimi POZİSYONDAN ÖNCE seçilir ve
 pozisyon süresince değişmez."""),
+
+Ders("d1308", "Kırılımdan sonra: retest",
+ "Kırılan seviyenin neden geri test edildiğini ve retest beklemenin neyi kazandırıp neyi kaçırdığını görmek.",
+ """Fiyat bir direnci kırdı. Bundan sonra iki şey olabilir ve ikisi de sık
+görülür: ya doğrudan devam eder, ya da geri dönüp kırdığı seviyeye dokunur.
+Bu ikinci harekete RETEST denir.
+
+Mekanizması insani ve basit:
+
+· Direncin altında sıkışıp zarar edenler, fiyat oraya geri gelince
+  "başabaşta çıkayım" diye satar. Bu satış baskısı ilk kırılımda büyük
+  ölçüde tükenir; geri dönüşte çok daha azdır.
+· Kırılımı kaçıranlar ikinci şansı bekler; fiyat geri gelince alırlar.
+· Kırılımda satışa geçenlerin stopları yukarıdadır ve tetiklenir.
+
+Sonuç ROL DEĞİŞİMİDİR: kırılan direnç, geri dönüşte destek gibi davranır.
+Fiyat oraya dokunup tutunursa kırılım teyit edilmiş sayılır.
+
+Buraya kadarı tanım. Asıl soru şu: RETEST BEKLEMELİ MİSİN?
+
+BEKLEYEREK KAZANDIĞIN: daha iyi giriş fiyatı. Stopun kırılan seviyenin
+altında sabit kaldığı için, giriş o seviyeye ne kadar yakınsa hisse başına
+riskin o kadar küçülür — yani aynı risk bütçesiyle daha çok adet alırsın.
+Ayrıca sahte kırılımların bir kısmını elemiş olursun.
+
+KAYBETTİĞİN: en güçlü kırılımlar geri dönmez. Arz gerçekten bittiyse fiyat
+durmadan gider. Retest bekleyen kişi sistematik olarak en iyi hareketleri
+kaçırır; elinde kalanlar görece zayıf kırılımlar olur.
+
+Bu bir TERCİHTİR, bedava bir iyileştirme değil. Birini seçmen ve seçtiğine
+sadık kalman gerekir.
+
+Ve bir uyarı: retest ile BAŞARISIZ KIRILIM, olduğu anda birbirinin aynısı
+görünür. İkisi de "fiyat geri geldi"dir. Hangisi olduğu ancak sonradan belli
+olur — bu yüzden retest'ten girerken de stop şarttır.""",
+ bist="""Bu sistemin `kirilim` stratejisi retest BEKLEMEZ. Kuralı şudur:
+kapanış 20 günlük zirvenin (DON_ust) üstünde, hacim son 20 günün
+ortalamasının 1,4 katından fazla, fiyat SMA200 üstünde ve ADX14 > 20.
+Şartlar t günü kapanışında sağlanırsa alım t+1 açılışında yapılır.
+
+Neden beklemiyor: "retest oldu" kuralını koda tartışmasız yazmak zor.
+Fiyatın seviyeye ne kadar yaklaşması retest sayılır — %1 mi, %2 mi, ATR'nin
+yarısı mı? Her eşik farklı bir backtest sonucu verir ve en iyi görüneni
+seçmek ölçmek değil, geçmişe uydurmaktır (d1311).
+
+Sistemin kırılımı filtreleme yolu farklı ve ölçülebilir: hacim teyidi
+(d702) ve hisse bazında geçmiş sahte kırılım oranı (d706).""",
+ tuzak=""""Kırılımdan sonra mutlaka retest gelir, acele etme." Bu cümle
+yaygındır ve yanlıştır. Retest her zaman gelmez; geldiğinde de tutacağı
+garanti değildir.
+
+Asıl zarar burada da değil. Bekleyen kişi, fiyat geri dönmeden yükselmeye
+devam edince genellikle dayanamaz ve çok daha yukarıdan, planladığından
+uzak bir stopla girer. Yani kuralı iki kez bozar: önce bekleyerek, sonra
+kovalayarak. Retest beklemeye karar verdiysen, retest gelmediğinde İŞLEM
+YAPMAMAK kuralın parçasıdır.""",
+ ornek="""Bir hisse 100 TL'lik direnci kırdı, şu an 106. Stopunu kırılan
+seviyenin altına, 97'ye koyacaksın — fiyat oraya dönerse kırılım başarısız
+olmuş demektir.
+
+Sistemin varsayılanlarıyla: 1.000 TL sermaye, işlem başına %1,5 risk =
+15 TL bütçe, tek hissede en fazla %35 = 350 TL.
+
+KIRILIMDAN AL: giriş 106, stop 97 → hisse başına risk 9 TL.
+15 / 9 = 1,7 → 1 adet. Maliyet 106 TL.
+
+RETEST'TEN AL: fiyat 101'e döndü, tutundu, oradan aldın. Stop yine 97 →
+hisse başına risk 4 TL. 15 / 4 = 3,7 → 3 adet. Maliyet 303 TL (350 TL
+tavanının hemen altında).
+
+Fiyat 115'e giderse: birincisi 9 TL, ikincisi 42 TL kazandırır. Aynı 15
+TL riskle.
+
+Şimdi diğer taraf: fiyat 101'e hiç dönmeyip 120'ye giderse ikinci yol
+SIFIR kazandırır. Retest'in bedeli budur ve sicilde görünmez — çünkü
+yapılmayan işlem hiçbir yere kaydedilmez. Bu iki yolu ancak kaçırdığın
+işlemleri de yazarsan kıyaslayabilirsin.""",
+ sorular=["t21"], sure=7),
+
+Ders("d1309", "Mum sözlüğü: aynı şekil, zıt anlam",
+ "Formasyon isimlerini ezberlemek yerine hepsinin dayandığı tek kuralı görmek.",
+ """d1306'da üç formasyon gördün. Kaynaklarda onlarca daha var. Hepsini
+ezberlemek gereksiz, çünkü hepsi aynı üç sorunun cevabıdır: gövde nerede,
+fitil nerede, bu mum NEYİN İÇİNDE oluştu.
+
+ŞEKİL ÇİFTLERİ — aynı şekil, bulunduğu yere göre zıt anlam:
+
+ÇEKİÇ / ASILI ADAM — ikisi de kısa gövde, uzun alt fitil, üst fitil yok
+denecek kadar kısa. Tek fark konum: düşüşün dibinde ÇEKİÇtir (dönüş
+adayı), yükselişin tepesinde ASILI ADAMdır (düşüş uyarısı). Üst üste
+koysan ayırt edemezsin.
+
+KAYAN YILDIZ / TERS ÇEKİÇ — kısa gövde, uzun ÜST fitil. Yükselişin
+tepesinde kayan yıldız, düşüşün dibinde ters çekiç.
+
+MARUBOZU — fitilsiz uzun gövde. Açılıştan kapanışa tek yön. Dönüş değil
+DEVAM işaretidir: bir taraf günün tamamına hakim olmuş.
+
+İKİ VE ÜÇ MUMLU OLANLAR:
+
+YUTAN BOĞA / YUTAN AYI — ikinci mumun gövdesi birincininkini tamamen
+kapsar. Boğa olanı düşüş trendinde, ayı olanı yükseliş trendinde aranır.
+
+SABAH YILDIZI / AKŞAM YILDIZI — üç mum: uzun bir mum, ardından kararsız
+kısa bir mum (rengi önemsiz), ardından ilk mumun gövdesinin içine kadar
+giren ters yönlü uzun bir mum.
+
+KARA BULUT ÖRTÜSÜ / DELİCİ ÇİZGİ — ikinci mum ters yönde açar ama birinci
+mumun gövdesinin ORTASINI geçerek kapanır.
+
+Bu sonuncusu hepsini birleştiren kuralı ele veriyor — ORTA NOKTA KURALI:
+bir mumun gövdesinin orta noktası, o günkü mücadelenin denge çizgisidir.
+Sonraki mum bu çizgiyi hangi yönde geçip KAPANDIYSA üstünlük o taraftadır.
+Formasyon adlarının çoğu, bu tek fikrin farklı şiddetteki halleridir.
+
+Yani ezberlenecek şey isimler değil, tek bir soru: bugünkü kapanış, dünkü
+mücadelenin neresinde?""",
+ bist="""Bu sistem bu formasyonların hiçbirini aramıyor — sebebi d1310'da,
+sayılarla.
+
+Ama orta nokta kuralının ölçülebilir bir akrabası sistemde var: `trend`
+stratejisinin giriş şartlarından biri `Close > Open`, yani gün yükselen
+mumla kapansın. Aynı sorunun tartışmasız hâli — günü kim kazandı?
+
+Bir de şu: BIST'te seans 18:00'de kapanır, ertesi sabah 10:00'da açılır.
+Aradaki 16 saat gerçek bir kopukluktur. Kesintisiz işlem gören piyasalarda
+(kripto gibi) bir mumun açılışı çoğunlukla öncekinin kapanışına eşittir ve
+formasyon anlatımları genelde o dünyaya göre yazılmıştır. BIST'te eşit
+olmak zorunda değildir: boşluk burada istisna değil, normaldir (d1305).""",
+ tuzak="""Şekli tanıyıp yeri kontrol etmemek. Asılı adam ile çekiç aynı
+çizimdir; tek fark solundaki grafiktir. Trende bakmadan "çekiç gördüm,
+alıyorum" diyen kişi çoğu zaman bir yükselişin tepesinde asılı adam satın
+alır.
+
+Doğru sıralama: önce TREND, sonra KONUM, en son ŞEKİL. Şekille başlarsan
+gerisini kendine uydurursun — beynin zaten desen görmek üzere kurulu.""",
+ ornek="""İki mum düşün, dördü de aynı: açılış 100,0 · kapanış 101,0 ·
+en yüksek 101,5 · en düşük 94,0. Gövde 1 TL, alt fitil 6 TL — yani alt
+fitil gövdenin 6 katı. Tanım gereği ikisi de "çekiç şekli".
+
+BİRİNCİSİ son 10 günde 130'dan 100'e düşmüş bir hissede oluştu. Okuma:
+satıcılar 94'e kadar bastırdı, alıcılar günü geri aldı. Düşüşün dibinde
+dönüş ADAYI — çekiç.
+
+İKİNCİSİ son 10 günde 78'den 100'e çıkmış bir hissede oluştu. Okuma:
+yükselişin içinde ilk kez ciddi satış görüldü, gün zar zor kurtarıldı.
+Asılı adam — uyarı işareti.
+
+Aynı dört sayı, zıt anlam. Farkı yaratan tek şey mumun solunda kalan
+grafiktir. Formasyon tablolarının söylemediği kısım budur.""",
+ sorular=["t22"], sure=8),
+
+Ders("d1310", "Formasyonun sicili: sayılar ne diyor",
+ "Bir formasyonun 'çalışır' iddiasını nasıl sınayacağını ve taban oranın neden şart olduğunu öğrenmek.",
+ """Formasyonlar hakkında en çok tekrarlanan cümle şudur: "bu formasyon %X
+oranında çalışır." Bu cümleyi duyduğunda sorulacak üç soru var ve genelde
+üçünün de cevabı yoktur:
+
+1) "ÇALIŞMAK" NE DEMEK? Fiyatın yönü döndü mü, yoksa sen para kazandın mı?
+   İkisi aynı şey değildir.
+2) NEYE GÖRE? Yükselen bir piyasada fiyat zaten günlerin yarısından
+   fazlasında yükselir. %55'lik bir "başarı", hiçbir şey yapmamaktan iyi
+   olmayabilir. Buna TABAN ORAN denir.
+3) ÖRNEKLEM NE? Hangi piyasa, hangi yıllar, kaç örnek?
+
+Bu sorulara cevap veren en geniş derleme, Thomas Bulkowski'nin 103 mum
+formasyonunu taradığı çalışmasıdır. Birkaç sayı:
+
+· ÇEKİÇ — vakaların %60'ında yükseliş dönüşü olarak çalışıyor. Bulkowski'nin
+  kendi yorumu: fena değil, ama rastlantıdan (%50) da çok uzak değil. Dönüş
+  sıralamasında 103 formasyon içinde 26'ncı; ama genel PERFORMANS
+  sıralamasında 65'inci. Yani dönüş oluyor, dönüşten sonraki hareket küçük.
+· YUTAN BOĞA — %63 dönüş, sıralamada 22'nci. Çok sık görülüyor (sıklıkta
+  12'nci). Sık görülmek iyi haber gibi durur ama değildir: çok deneme, çok
+  kayma ve çok yanlış giriş demektir.
+· YUTAN AYI — %79 dönüş, sıralamada 5'inci. Muhteşem görünüyor. Ama
+  dönüşten sonraki hareket kısa ömürlü: performansta 91'inci.
+
+Asıl ders bu son satırda: DÖNÜŞ ORANI İLE KAZANÇ AYNI ŞEY DEĞİLDİR. Yutan
+ayı vakaların dörtte üçünde yön değiştiriyor ve yine de üstünden para
+kazanmak zor, çünkü hareket kısa. Sadece isabet oranına bakan biri bu
+formasyonu harika sanır (d803: bir kuralın değeri isabeti değil, beklenen
+değeridir).
+
+AKADEMİK TARAF ikiye bölünmüş durumda:
+· Japon hisse piyasasında 1975-2004 dönemi: mum grafiği kârlı bulunmuyor.
+· İsveç OMXS30'da 2007-2015: öngörü gücü bulunamıyor.
+· 14 formasyonun getirisini RASTGELE ÜRETİLMİŞ fiyat serileriyle kıyaslayan
+  bir çalışma: öngörü gücü yok — aynı "başarı" oranları uydurma veride de
+  çıkıyor. Bu, taban oran sorusunun neden hayati olduğunun kanıtı.
+· Buna karşılık Tayvan piyasasında dört formasyonun işlem maliyetlerinden
+  sonra bile kârlı olduğunu bulan çalışmalar var.
+
+Toplam sonuç: kesin bir cevap yok. Bazı piyasalarda, bazı dönemlerde, bazı
+formasyonlar bir kenar üretiyor olabilir. "Olabilir" ile paranı riske atman
+arasında duran şey ölçümdür.
+
+KENDİN NASIL ÖLÇERSİN — üç adım:
+
+1) Formasyonu KODA YAZILABİLECEK kadar kesin tanımla. "Uzun fitil" değil:
+   `alt_fitil >= govde * 2 ve ust_fitil <= govde * 0,3`. Tanımı koda
+   yazamıyorsan o bir kural değil, bir izlenimdir.
+2) Geçmiş veride tara ve SABİT bir kural uygula: sinyalden sonraki gün
+   açılıştan gir, N gün sonra ya da stopta çık. Kuralı sonuçlara göre
+   değiştirmek yasak.
+3) TABAN ORANLA KIYASLA: aynı hisselerde RASTGELE seçilmiş aynı sayıda günde
+   aynı kuralı uygulasan ne çıkardı? Formasyon ancak bu farkı geçerse bir
+   şey anlatıyor demektir.
+
+Üçüncü adım atlanırsa yapılan şey ölçüm değildir. En sık atlanan adım da
+odur.""",
+ bist="""BIST için güvenebileceğin yayımlanmış bir mum formasyonu istatistiği
+yok. Ama veri sende: sistem her hissenin günlük açılış, en yüksek, en düşük,
+kapanış ve hacim geçmişini ambarda tutuyor. Yukarıdaki üç adımı bu veriyle
+kendin yapabilirsin — üstelik kayma ve tavan kuralı zaten backtest motorunda
+modellenmiş durumda.
+
+Sistemin formasyon aramamasının sebebi de aynı ölçüm: backteste sokulduğunda
+tutarlı bir kenar üretmediler. Bunun yerine aynı sezgilerin tartışmasız
+tanımlı halleri kullanılıyor — `tepki` stratejisi (RSI2 < 10 ve fiyat
+SMA200 üstünde) bir "dip mumu" arayışının ölçülebilir karşılığıdır.
+
+Ve sistemin kendi kuralları da bu muameleden muaf değil: her strateji canlı
+sonuçlarıyla ölçülür, backtest beklentisinin altında kalırsa karantinaya
+alınır ve önerilmez olur. Kural aynı — ölçülmeyen şey önerilmez.""",
+ tuzak=""""Bu formasyon %70-80 çalışır" tipi cümleler. Kaynak yok, tanım yok,
+örneklem yok, taban oran yok. Böyle bir cümleyle karşılaştığında dört soruyu
+sor: hangi veri, hangi dönem, "çalışmak" nasıl tanımlandı, neyle kıyaslandı.
+Dördü de cevapsızsa o bir ölçüm değil, bir reklamdır.
+
+İkinci tuzak daha incedir: yüksek isabet oranına bakıp pozisyon almak. Yutan
+ayının %79'u bunun örneğidir — isabet yüksek, kazanç küçük. İsabet oranı
+tek başına hiçbir şey söylemez; kazandığında ne kadar kazandığını bilmeden
+karar veremezsin.""",
+ ornek="""Aşağıdaki sayılar UYDURMA — yöntemi göstermek için. Amaç sonucu
+değil, üçüncü adımın ne yaptığını görmek.
+
+Çekici koda yazdın ve BIST100'de son 5 yılda 400 örnek buldun. Her birinde
+ertesi gün açılıştan alıp 5 gün sonra kapattın.
+
+Sonuç: örneklerin %58'i kârlı, ortalama getiri +%0,40.
+
+Kulağa iyi geliyor. Şimdi TABAN ORANI hesapla: aynı hisselerde, rastgele
+seçilmiş 400 günde, aynı kuralı uygula.
+
+Çıkan: %56 kârlı, ortalama +%0,35.
+
+Fark: 2 puan isabet, 0,05 puan getiri. 400 örnekte bu fark gürültünün
+içinde kalır — ve kaymayı eklediğinde tamamen kaybolur.
+
+İşte bu yüzden "formasyona inanmıyorum" demekle "ölçtüm, geriye bir şey
+kalmadı" demek çok farklı iki cümledir. Birincisi bir görüş, ikincisi bir
+sonuçtur. Sadece ikincisi tartışılabilir.""",
+ sorular=["o16"], sure=9),
+
+Ders("d1311", "Fiyat bir zaman serisidir",
+ "Grafikte gördüğünün ne kadarının gürültü olduğunu ve kuralların neden orana dayanması gerektiğini görmek.",
+ """Grafiğe baktığında gördüğün şeyin adı ZAMAN SERİSİDİR: zamana sıralı
+ölçümler. Bu veriyi inceleyen ayrı bir istatistik dalı var ve oradan gelen
+üç fikir grafiğe bakışını doğrudan değiştirir.
+
+1) AYRIŞTIRMA. Bir zaman serisi üç parçaya ayrılır:
+   · TREND — uzun vadeli yön
+   · MEVSİMSELLİK — düzenli aralıklarla tekrar eden desen
+   · GÜRÜLTÜ — geri kalan, açıklanamayan dalgalanma
+
+   Dondurma satışında mevsimsellik güçlüdür: her yaz artar. Hisse fiyatında
+   ise ZAYIFTIR. "Mayısta sat" gibi takvim kuralları, keşfedildikleri veri
+   dışına çıkınca genellikle kaybolur.
+
+   Kalan iki parçadan hangisi büyük? Günlük grafikte çoğunlukla GÜRÜLTÜ.
+   Bu, teknik analizin neden zor olduğunun tek cümlelik açıklamasıdır:
+   ekrandaki hareketin çoğu bir şey anlatmıyor. Bir kural ancak gürültüden
+   büyük bir sinyal yakalarsa değerlidir.
+
+2) DURAĞANLIK. Bir seri durağansa ortalaması ve oynaklığı zamanla değişmez.
+   Fiyat durağan DEĞİLDİR: 2015'in fiyat seviyesiyle bugünkü aynı ölçek
+   değildir. Türkiye'de enflasyon yüzünden bu çok daha keskindir.
+
+   Pratik sonucu şu: FİYAT SEVİYESİNE dayalı kurallar zamanla bozulur. "50
+   liranın altı ucuzdur" kuralı iki yıl sonra bambaşka bir şey ölçer. Buna
+   karşılık ORANA dayalı kurallar taşınır: RSI, ATR'nin fiyata oranı,
+   fiyatın ortalamasına uzaklığı, 60 günlük getiri. Bunlar fiyat
+   seviyesinden bağımsızdır.
+
+   Getiriler fiyattan çok daha durağandır. Ciddi ölçümlerin fiyat üzerinde
+   değil GETİRİ üzerinde yapılmasının sebebi budur.
+
+3) SIRA BOZULAMAZ. Sıradan makine öğrenmesinde veri karıştırılır (shuffle)
+   ve rastgele eğitim/test diye bölünür. Zaman serisinde bu YASAKTIR:
+   karıştırmak, geleceğin bilgisini geçmişe sızdırmaktır. Model gelecekte
+   olanı görmüş olur ve sınav sahte çıkar.
+
+   Aynı hatanın bir başka hâli: bir kuralı geçmişin tamamına uydurup
+   "bakın %95 tutturdu" demek. Bunun adı AŞIRI UYUM (overfitting). Denenen
+   parametre sayısı arttıkça geçmiş güzelleşir, gelecek kötüleşir.
+
+   Doğru yöntem kronolojiktir: kuralı geçmişin bir bölümünde kur, DAHA
+   SONRAKİ bölümde — hiç bakmadığın veride — sına.""",
+ bist="""Bu üç fikir sistemin tasarımında doğrudan görünüyor:
+
+· SIRA — backtest gün gün ilerler; sinyal t kapanışında üretilir, işlem
+  t+1 açılışında yapılır. Aynı günün kapanışını bilerek kullanan bir sinyal
+  yazılamaz. Bu kural `cekirdek/strateji.py` dosyasının en başında yazılıdır
+  ve sistemin tüm ölçümü buna dayanır.
+· DURAĞANLIK — filtreler TL değil ORAN cinsindendir: ATR'nin fiyata oranı
+  %0,8 ile %7 arasında, günlük değişim %9'un altında, TL hacim tabanı ise
+  bilinçli olarak yüksek tutulmuş bir likidite eşiği. Bir eşik "40 lira"
+  olsaydı bir yıl sonra başka bir şey ölçüyor olurdu.
+· AŞIRI UYUM — karantina mekanizması tam olarak bunun için var. Backtest
+  geçmiştir ve geçmişe uydurulmuş olabilir; karantina, kuralın hiç görmediği
+  veriyle sınanmasıdır. Canlı sicil backtest beklentisinin altına düşerse o
+  strateji önerilmez olur.
+
+ARIMA, SARIMA gibi zaman serisi modellerinin adını duyabilirsin. Bu sistem
+onları kullanmıyor: fiyat serisinde bu modellerin yakaladığı yapı zayıftır
+ve model karmaşıklaştıkça aşırı uyum riski hızla büyür.""",
+ tuzak="""Backtest'i "en iyi ayarları bulma" işi sanmak. Parametreleri
+geçmişte en çok kazandıran değerlere çekmek ölçüm değil uydurmadır — ve
+sonucu HER ZAMAN güzel görünür, çünkü aradığın şeyi bulana kadar
+aramışsındır.
+
+Sağlamlık ölçütü şudur: bir ayarı biraz değiştirdiğinde sonuç dramatik
+değişiyorsa o ayar veriye uydurulmuştur. Sağlam bir kural, komşu ayarlarda
+da benzer sonuç verir. RSI eşiği 30 iken kazandırıp 32 iken kaybettiren bir
+strateji, strateji değildir.""",
+ ornek="""İki kural düşün; ikisi de "ucuzken al" demek istiyor.
+
+A KURALI: "Fiyat 50 TL'nin altındaysa al."
+B KURALI: "Fiyat 200 günlük ortalamasının %10 altındaysa al."
+
+2019'da ikisi de benzer hisseleri seçmiş olabilir. Bugün A kuralı ya hiçbir
+şey seçmiyordur ya da yalnızca en küçük şirketleri seçiyordur — aradan geçen
+enflasyon 50 TL'yi bambaşka bir şey haline getirdi. B kuralı ise ilk günkü
+soruyu sormaya devam ediyor.
+
+Fark, B'nin daha akıllı olması değil: B DURAĞAN bir büyüklüğe dayanıyor.
+
+Kural yazarken sorulacak soru budur — bu eşik beş yıl sonra da aynı şeyi mi
+ölçecek? Cevap hayırsa, kuralı değil ölçeği düzelt.""",
+ sorular=["u16"], sure=9),
 ])
 
 MODULLER = [M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13]

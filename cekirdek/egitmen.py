@@ -556,6 +556,10 @@ _BAGLAM_KURALLARI: list[tuple[str, str, str]] = [
     ("kap_yogun",     "d1101", "Bugün KAP'ta şirket açıklamaları var. En "
                                "güvenilir bilgi kaynağını doğru okumak, "
                                "haberden önce davranmaktan daha değerli."),
+    ("kirilim_sinyali", "d1308", "Bugünkü sinyallerden biri kırılım. "
+                               "Kırılımı kırıldığı gün mü almalı, geri "
+                               "çekilmesini mi beklemeli — bu dersin konusu "
+                               "tam olarak o tercih ve bedeli."),
     ("sinyal_yok",    "d1004", "Bugün önerilen sinyal yok. Boş günlerde "
                                "işlem üretme dürtüsü en pahalı alışkanlıktır."),
     ("oynaklik",      "d705",  "Bugün oynaklık yüksek. Aynı pozisyon boyutu "
@@ -628,6 +632,12 @@ def gunun_durumu(tarama: dict | None = None, karne: dict | None = None,
                                < adet * 0.6)
 
     d["sinyal_yok"] = (tarama.get("onerilen") == 0)
+
+    # gun_ozeti her sinyalin hangi stratejiden geldiğini taşıyor; ders
+    # seçimi buna bakar. Strateji adı `cekirdek/strateji.py` ile aynı.
+    d["kirilim_sinyali"] = any(
+        "kirilim" in (x.get("sinyaller") or [])
+        for x in (ozet.get("sinyal_veren") or []))
 
     # gun_ozeti şemasındaki gerçek alan adı
     reel = ozet.get("bist_reel_1y")

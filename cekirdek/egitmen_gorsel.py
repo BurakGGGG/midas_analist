@@ -39,6 +39,10 @@ DERS_GORSEL: dict[str, str] = {
     "d1305": "sema:bosluk",
     "d1306": "sema:mum_formasyonlari",
     "d1307": "sema:zaman_dilimi",
+    "d1308": "sema:retest",
+    "d1309": "sema:mum_sozlugu",
+    "d1310": "sema:formasyon_sicili",
+    "d1311": "sema:zaman_serisi",
 }
 
 
