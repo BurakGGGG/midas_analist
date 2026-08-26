@@ -1,0 +1,11 @@
+# Görsel koşum ayrı tutulur.
+#
+# gorunum_test.dart gerçek widget'ları PNG'ye basar; amacı gözle bakmak,
+# kıyaslamak değil. Font sürümü ya da işletim sistemi değişince piksel
+# farkından kırılır ve gerçek bir hatayı değil ortam farkını bildirir.
+#
+# Normal koşu:   flutter test
+# Görselleri üret: flutter test --update-goldens --run-skipped --tags gorunum
+tags:
+  gorunum:
+    skip: "görsel koşum: flutter test --update-goldens --run-skipped --tags gorunum"

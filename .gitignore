@@ -1,0 +1,40 @@
+# ── SIRLAR — asla girmez
+.env
+*.pem
+*.key
+
+# ── Ortam
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# ── Veri ve çıktı
+# ambar.db öğrenme hafızası, *.pkl fiyat önbelleği, *.log çalışma kaydı.
+# Hiçbiri kaynak değil; üretilir ve kişiseldir (sunucu adresi de içerir).
+veri/
+cikti/
+
+# ── Kişisel durum (uygulama üretir)
+portfoy.json
+tezler.json
+ilerleme.json
+
+# ── Flutter / Android
+mobil/build/
+mobil/.dart_tool/
+mobil/.flutter-plugins*
+mobil/android/.gradle/
+mobil/android/local.properties
+mobil/android/key.properties
+mobil/ios/Pods/
+mobil/linux/flutter/ephemeral/
+*.apk
+*.aab
+*.iml
+
+# ── Düzenleyici / işletim sistemi
+.idea/
+.vscode/
+.DS_Store

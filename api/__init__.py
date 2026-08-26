@@ -1,0 +1,1 @@
+"""Midas Analist API paketi."""

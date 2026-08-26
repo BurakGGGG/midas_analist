@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Günlük işi her iş günü 18:10'da çalıştıracak şekilde kurar.
+# systemd kullanıcı zamanlayıcısı tercih edilir (yeniden başlatmaya dayanır,
+# günlüğü journald'a yazar). Yoksa cron'a düşer.
+set -euo pipefail
+KOK="$(cd "$(dirname "$0")" && pwd)"
+SAAT="${SAAT:-18:10}"
+
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+  mkdir -p ~/.config/systemd/user
+  cat > ~/.config/systemd/user/midas-gunluk.service <<SRV
+[Unit]
+Description=Midas Analist günlük iş
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=$KOK
+EnvironmentFile=-$KOK/.env
+ExecStart=$KOK/gunluk.sh
+SRV
+  cat > ~/.config/systemd/user/midas-gunluk.timer <<TMR
+[Unit]
+Description=Midas Analist günlük iş zamanlayıcı (iş günleri $SAAT)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* $SAAT:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
+TMR
+  systemctl --user daemon-reload
+  systemctl --user enable --now midas-gunluk.timer
+  loginctl enable-linger "$USER" 2>/dev/null || true
+  echo "✓ systemd zamanlayıcı kuruldu (iş günleri $SAAT)"
+  echo
+  systemctl --user list-timers midas-gunluk.timer --no-pager 2>/dev/null | head -3
+  echo
+  echo "  Durum:      systemctl --user status midas-gunluk.timer"
+  echo "  Elle çalış: systemctl --user start midas-gunluk.service"
+  echo "  Kayıt:      tail -f $KOK/veri/gunluk.log"
+  echo "  Kapat:      systemctl --user disable --now midas-gunluk.timer"
+else
+  SS="${SAAT%%:*}"; DK="${SAAT##*:}"
+  SATIR="$DK $SS * * 1-5 $KOK/gunluk.sh"
+  ( crontab -l 2>/dev/null | grep -v "midas.*gunluk.sh" ; echo "$SATIR" ) | crontab -
+  echo "✓ cron kuruldu: $SATIR"
+  echo "  Kontrol: crontab -l"
+  echo "  Kayıt:   tail -f $KOK/veri/gunluk.log"
+fi

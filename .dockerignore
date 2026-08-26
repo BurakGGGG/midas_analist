@@ -1,0 +1,10 @@
+mobil/
+veri/
+cikti/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+portfoy.json
+tezler.json
+.git/

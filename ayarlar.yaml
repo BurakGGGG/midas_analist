@@ -1,0 +1,37 @@
+# ═══════════════════════════════════════════════════════════════════
+#  MİDAS ANALİST — ayarlar
+#  Değiştirdiğin her sayı riskini değiştirir. Önce backtest et, sonra uygula.
+# ═══════════════════════════════════════════════════════════════════
+
+sermaye: 1000.0            # Midas hesabındaki toplam TL
+
+risk:
+  islem_basi_risk_yuzde: 1.5   # Tek işlemde sermayenin en fazla %'si riske girer.
+                               # 1000 TL'de %1.5 = 15 TL. Üst üste 10 kayıp = -%14.
+                               # %2'nin üstü küçük hesapta hızlı erimedir.
+  azami_pozisyon_yuzde: 35     # Tek hissede sermayenin en fazla %'si.
+                               # BIST'te kesirli hisse yok; 1000 TL ile 400 TL'lik
+                               # hisse zaten alınamaz. Bu tavan onu yakalar.
+  azami_es_zamanli: 4          # Aynı anda en fazla kaç pozisyon
+  atr_stop_kat: 2.5            # Stop = giriş - kat × ATR
+  atr_hedef_kat: 5.0           # Hedef = giriş + kat × ATR (2:1 ödül/risk)
+                               # NOT: bir strateji sinyali varsa O stratejinin
+                               # çarpanları kullanılır (backtest neyi ölçtüyse o).
+                               # Buradakiler sinyalsiz analizde geçerli.
+  gunluk_kayip_limiti_yuzde: 4 # Gün içi bu kadar kaybettiysen o gün kapat
+
+filtre:
+  asgari_tl_hacim: 20000000    # Günlük ortalama işlem hacmi tabanı (20M TL)
+  azami_atr_yuzde: 7.0         # Günlük %7+ oynayan hisse = kumar/brüt takas riski
+  asgari_atr_yuzde: 0.8        # Hiç oynamayan hisseden getiri çıkmaz
+  tavan_esigi: 9.0             # Gün içi +%9 üstü kapanan hisseyi ertesi gün alma
+  asgari_veri: 220             # SMA200 için gereken geçmiş
+
+backtest:
+  kayma_bp: 15                 # Tek yön kayma, baz puan. 15bp = %0.15.
+                               # Midas BIST komisyonu 0 ama kayma sıfır DEĞİL.
+                               # Likit olmayan hissede 30-50bp gerçekçidir.
+  gun: 1200                    # Kaç günlük geçmişle test edilsin
+
+evren: bist100                 # bist30 | bist100 | hepsi | THYAO,GARAN,...
+varsayilan_strateji: kirilim   # trend | tepki | kirilim
