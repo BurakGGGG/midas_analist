@@ -6,6 +6,8 @@ import '../tema.dart';
 import 'hisse.dart';
 import 'ayarlar.dart';
 import 'sermaye.dart';
+import 'kabuk.dart';
+import 'makro.dart';
 
 /// Günün özeti. Sıralama bilinçli: önce ELDEKİ pozisyonlar (aksiyon gerektirir),
 /// sonra piyasa rejimi, en son yeni fırsatlar. Yeni alım en son bakılacak şeydir.
@@ -103,6 +105,10 @@ class _BugunDurum extends State<BugunEkran> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Kutu(
+        // Karta dokunmak Portföy sekmesine götürür. İçerideki "SERMAYE +/-"
+        // kendi InkWell'i olduğu için önce o yakalar — iç içe dokunma
+        // hedeflerinde en içteki kazanır.
+        tikla: () => sekmeyeGit(c, Sekme.portfoy),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -111,6 +117,10 @@ class _BugunDurum extends State<BugunEkran> {
                 Text('PORTFÖY',
                     style: Theme.of(c).textTheme.labelSmall?.copyWith(
                         color: sem.aksan, letterSpacing: 1.4)),
+                // Dokunulabilir olduğunu söyleyen tek işaret. Sönük renk:
+                // içeriğin önüne geçmemeli, ama görünmeli.
+                Icon(Icons.chevron_right_sharp,
+                    size: 15, color: sem.aksan.withValues(alpha: 0.55)),
                 const Spacer(),
                 // Sermaye tek dokunuş uzakta olmalı: kullanıcı hesabına
                 // sürekli para ekliyor, bunu ayarlar içinde aramamalı.
@@ -283,6 +293,9 @@ class _BugunDurum extends State<BugunEkran> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Kutu(
+            // Rejim özeti burada, ayrıntısı (kur, faiz, emtia) Makro'da.
+            tikla: () => Navigator.push(
+                c, MaterialPageRoute(builder: (_) => const MakroEkran())),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -294,6 +307,9 @@ class _BugunDurum extends State<BugunEkran> {
                       Text('Enflasyon ${yzd(enf['yillik'] as num?, isaret: false)}',
                           style: Theme.of(c).textTheme.bodySmall?.copyWith(
                               color: Theme.of(c).colorScheme.onSurfaceVariant)),
+                    const SizedBox(width: 6),
+                    Icon(Icons.chevron_right_sharp,
+                        size: 16, color: Renk.metinSonuk),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -341,6 +357,13 @@ class _BugunDurum extends State<BugunEkran> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Kutu(
+            // Yalnızca sinyal varken tıklanabilir: sıfır sinyal günü
+            // "bugün işlem yok" diyor, kullanıcıyı taramaya itmek o
+            // mesajın tersini söylerdi. Ok işareti de yalnızca o durumda
+            // görünüyor — görünen ile yapılan aynı kalmalı.
+            tikla: (_sinyalSayisi ?? 0) == 0
+                ? null
+                : () => sekmeyeGit(c, Sekme.tarama),
             child: _sinyalSayisi == 0
                 ? Row(
                     children: [

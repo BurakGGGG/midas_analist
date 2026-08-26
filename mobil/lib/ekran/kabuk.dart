@@ -5,6 +5,26 @@ import 'portfoy.dart';
 import 'tezler.dart';
 import 'daha.dart';
 
+/// Alt sekmeler. Sıra günlük akışı izler: bugün ne var → ara → neyim var
+/// → neden aldım. `index` NavigationBar'ın beklediği sırayla aynı.
+enum Sekme { bugun, tarama, portfoy, tezler, daha }
+
+/// Seçili sekme — tek doğruluk kaynağı.
+///
+/// NEDEN GLOBAL: Bugün ekranındaki kartlar "Portföy'e git", "Tarama'ya git"
+/// diyebilmeli. Geri çağrıyı widget ağacından aşağı taşımak, aradaki her
+/// widget'ın const olmaktan çıkmasını ve derinlerdeki bir ekranın sekme
+/// değiştirememesini getirirdi.
+final sekme = ValueNotifier<Sekme>(Sekme.bugun);
+
+/// Başka bir ekrandan sekme değiştirmek için. Üstte açık sayfa varsa
+/// önce kapanır — yoksa kullanıcı sekmeyi değiştirir ama ekranda hâlâ
+/// eski sayfayı görür.
+void sekmeyeGit(BuildContext c, Sekme s) {
+  Navigator.of(c).popUntil((r) => r.isFirst);
+  sekme.value = s;
+}
+
 class Kabuk extends StatefulWidget {
   const Kabuk({super.key});
   @override
@@ -12,18 +32,31 @@ class Kabuk extends StatefulWidget {
 }
 
 class _KabukDurum extends State<Kabuk> {
-  int _i = 0;
-
-  // Sekme sırası günlük akışı izler: bugün ne var → ara → neyim var → neden aldım
   static const _ekranlar = [BugunEkran(), TaramaEkran(), PortfoyEkran(),
                             TezlerEkran(), DahaEkran()];
 
   @override
+  void initState() {
+    super.initState();
+    sekme.addListener(_degisti);
+  }
+
+  @override
+  void dispose() {
+    sekme.removeListener(_degisti);
+    super.dispose();
+  }
+
+  void _degisti() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext c) => Scaffold(
-        body: IndexedStack(index: _i, children: _ekranlar),
+        body: IndexedStack(index: sekme.value.index, children: _ekranlar),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: _i,
-          onDestinationSelected: (v) => setState(() => _i = v),
+          selectedIndex: sekme.value.index,
+          onDestinationSelected: (v) => sekme.value = Sekme.values[v],
           destinations: const [
             NavigationDestination(
                 icon: Icon(Icons.today_sharp),
