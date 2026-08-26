@@ -17,7 +17,7 @@ from typing import Any
 
 warnings.filterwarnings("ignore")
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -954,6 +954,116 @@ def defter_satim(istek: DefterSatim):
     if not defter.acik_pozisyon(istek.sembol):
         izleme.sil(istek.sembol)
     return guvenli({"karar": k, "acik": defter.acik_pozisyonlar()})
+
+# ══════════════════════════════════════════════════════ hesap ve bulut yedeği
+#
+# Bu katman API'nin durumsuzluğunu BOZMUYOR: tarama, risk, backtest hâlâ
+# gönderdiğin veriyle hesaplıyor ve hiçbir şey hatırlamıyor. Sunucunun
+# sakladığı tek şey telefonun durumunun bir KOPYASI — geri yükleme noktası.
+#
+# Uçlar mevcut API anahtarı kapısının ARKASINDA. Yani buraya ulaşmak için
+# önce anahtar, sonra jeton gerekiyor; parola katmanı onun yerine değil,
+# üstüne. Caddy TLS verdiği için parola düz metin gitmiyor.
+
+
+class KayitIstek(BaseModel):
+    eposta: str
+    parola: str
+    cihaz: str = ""
+
+
+class ParolaIstek(BaseModel):
+    eski: str
+    yeni: str
+
+
+class YedekIstek(BaseModel):
+    icerik: dict
+    cihaz: str = ""
+    # İstemcinin elindeki sürüm. Sunucudaki daha yeniyse yazma reddedilir —
+    # bir hafta açılmamış ikinci telefon güncel yedeği ezmesin.
+    beklenen_surum: int | None = None
+
+
+def _kullanici(authorization: str | None) -> int:
+    """Bearer jetonundan kullanıcı id'si. Geçersizse 401."""
+    from cekirdek import hesap
+    jeton = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        jeton = authorization[7:].strip()
+    kid = hesap.jeton_dogrula(jeton)
+    if kid is None:
+        raise HTTPException(401, "Oturum geçersiz ya da süresi dolmuş.")
+    return kid
+
+
+@app.post("/hesap/kayit")
+def hesap_kayit(istek: KayitIstek):
+    from cekirdek import hesap
+    try:
+        return hesap.kayit(istek.eposta, istek.parola, istek.cihaz)
+    except hesap.HesapHata as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/hesap/giris")
+def hesap_giris(istek: KayitIstek):
+    from cekirdek import hesap
+    try:
+        return hesap.giris(istek.eposta, istek.parola, istek.cihaz)
+    except hesap.HesapHata as e:
+        # 401 değil 400: "kilitlendin" ile "parola yanlış" ikisi de burada
+        # ve istemci ikisini de kullanıcıya aynı şekilde gösteriyor.
+        raise HTTPException(400, str(e))
+
+
+@app.post("/hesap/cikis")
+def hesap_cikis(authorization: str | None = Header(default=None)):
+    from cekirdek import hesap
+    jeton = authorization[7:].strip() if (
+        authorization and authorization.lower().startswith("bearer ")) else ""
+    return {"dustu": hesap.cikis(jeton)}
+
+
+@app.get("/hesap")
+def hesap_bilgi(authorization: str | None = Header(default=None)):
+    from cekirdek import hesap
+    return hesap.bilgi(_kullanici(authorization))
+
+
+@app.post("/hesap/parola")
+def hesap_parola(istek: ParolaIstek,
+                 authorization: str | None = Header(default=None)):
+    from cekirdek import hesap
+    kid = _kullanici(authorization)
+    try:
+        hesap.parola_degistir(kid, istek.eski, istek.yeni)
+    except hesap.HesapHata as e:
+        raise HTTPException(400, str(e))
+    # Tüm oturumlar düştü; istemci yeniden giriş yapmalı.
+    return {"degisti": True, "yeniden_giris_gerekli": True}
+
+
+@app.get("/yedek")
+def yedek_getir(authorization: str | None = Header(default=None)):
+    from cekirdek import hesap
+    y = hesap.yedek_oku(_kullanici(authorization))
+    if y is None:
+        return {"var": False}
+    return {"var": True, **y}
+
+
+@app.put("/yedek")
+def yedek_koy(istek: YedekIstek,
+              authorization: str | None = Header(default=None)):
+    from cekirdek import hesap
+    kid = _kullanici(authorization)
+    try:
+        return hesap.yedek_yaz(kid, istek.icerik, istek.cihaz,
+                               beklenen_surum=istek.beklenen_surum)
+    except hesap.HesapHata as e:
+        raise HTTPException(400, str(e))
+
 
 @app.get("/sozluk")
 def sozluk():

@@ -55,10 +55,13 @@ class Api {
   }
 
   Future<dynamic> _get(String yol,
-      {Map<String, dynamic>? sorgu, bool uzun = false}) async {
+      {Map<String, dynamic>? sorgu, bool uzun = false, String? jeton}) async {
     try {
       final c = await http
-          .get(_u(yol, sorgu), headers: _basliklar)
+          .get(_u(yol, sorgu), headers: {
+            ..._basliklar,
+            if (jeton != null) 'Authorization': 'Bearer $jeton',
+          })
           .timeout(uzun ? _uzun : _kisa);
       if (c.statusCode == 200) return jsonDecode(utf8.decode(c.bodyBytes));
       if (c.statusCode == 404) {
@@ -81,11 +84,15 @@ class Api {
   }
 
   Future<dynamic> _post(String yol, Map<String, dynamic> govde,
-      {bool uzun = false}) async {
+      {bool uzun = false, String? jeton}) async {
     try {
       final c = await http
           .post(_u(yol),
-              headers: {'Content-Type': 'application/json', ..._basliklar},
+              headers: {
+                'Content-Type': 'application/json',
+                ..._basliklar,
+                if (jeton != null) 'Authorization': 'Bearer $jeton',
+              },
               body: jsonEncode(govde))
           .timeout(uzun ? _uzun : _kisa);
       if (c.statusCode == 200) return jsonDecode(utf8.decode(c.bodyBytes));
@@ -184,6 +191,58 @@ class Api {
           {required double sermaye, String profil = 'dengeli'}) async =>
       Map<String, dynamic>.from(await _get('/dagitim',
           uzun: true, sorgu: {'sermaye': sermaye, 'profil': profil}));
+
+  // ── hesap ve bulut yedeği
+  //
+  // Hepsi API anahtarının ARKASINDA: anahtar başlığı _basliklar'dan gelir,
+  // jeton onun üstüne eklenir. İkisinden biri eksikse sunucu 401 döner.
+
+  Future<Map<String, dynamic>> hesapKayit(
+          String eposta, String parola, String cihaz) async =>
+      Map<String, dynamic>.from(await _post('/hesap/kayit',
+          {'eposta': eposta, 'parola': parola, 'cihaz': cihaz}, uzun: true));
+
+  Future<Map<String, dynamic>> hesapGiris(
+          String eposta, String parola, String cihaz) async =>
+      Map<String, dynamic>.from(await _post('/hesap/giris',
+          {'eposta': eposta, 'parola': parola, 'cihaz': cihaz}, uzun: true));
+
+  Future<void> hesapCikis(String jeton) async =>
+      await _post('/hesap/cikis', const {}, jeton: jeton);
+
+  Future<Map<String, dynamic>> hesapBilgi(String jeton) async =>
+      Map<String, dynamic>.from(await _get('/hesap', jeton: jeton));
+
+  Future<Map<String, dynamic>> hesapParola(
+          String jeton, String eski, String yeni) async =>
+      Map<String, dynamic>.from(await _post(
+          '/hesap/parola', {'eski': eski, 'yeni': yeni},
+          jeton: jeton, uzun: true));
+
+  Future<Map<String, dynamic>> yedekGetir(String jeton) async =>
+      Map<String, dynamic>.from(await _get('/yedek', jeton: jeton, uzun: true));
+
+  Future<Map<String, dynamic>> yedekKoy(String jeton, Map<String, dynamic> icerik,
+      {required String cihaz, int? beklenenSurum}) async {
+    final c = await http
+        .put(_u('/yedek'),
+            headers: {
+              'Content-Type': 'application/json',
+              ..._basliklar,
+              'Authorization': 'Bearer $jeton',
+            },
+            body: jsonEncode({
+              'icerik': icerik,
+              'cihaz': cihaz,
+              if (beklenenSurum != null) 'beklenen_surum': beklenenSurum,
+            }))
+        .timeout(_uzun);
+    if (c.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(utf8.decode(c.bodyBytes)));
+    }
+    throw ApiHata('Yedek gönderilemedi (${c.statusCode})',
+        kod: c.statusCode, oneri: _detay(c.body));
+  }
 
   Future<Map<String, dynamic>> sozluk() async =>
       Map<String, dynamic>.from(await _get('/sozluk'));
