@@ -78,6 +78,46 @@ def gunluk_ozet(ozet: dict, siniflar: dict | None = None) -> str:
     return "\n".join(s)
 
 
+def sabah_hatirlatici(plan: dict) -> str:
+    """09:45 mesajı — dün akşamki sinyaller, emir rakamlarıyla.
+
+    Akşamki özetten farkı ve varlık sebebi: orada sembol, sinyal ve fiyat
+    var; burada ADET, STOP ve HEDEF var. Emri girerken lazım olanlar
+    bunlar ve sabah kimse onları söylemiyordu.
+
+    Tavan satırı süs değil: backtest, ertesi gün önceki kapanışın %19,5
+    üstünde AÇAN hisseyi alınamaz sayıyor. Gerçekte de alamazsın, tavanda
+    satıcı yoktur. O kuralı burada söylemezsek sicil ile gerçek ayrışır.
+    """
+    emirler = plan.get("emirler") or []
+    if not emirler:
+        return ""
+
+    s = [f"🔔 <b>Bugün açılışta — {len(emirler)} emir</b>"]
+    rejim = plan.get("rejim")
+    if rejim:
+        s.append(f"   Rejim: {kacis(rejim)}")
+    s.append("")
+
+    for e in emirler:
+        sinyal = (e.get("sinyaller") or [""])[0]
+        s.append(f"<b>{kacis(e['sembol'])}</b> · {kacis(sinyal)} "
+                 f"· skor {e.get('skor', 0):.0f}")
+        s.append(f"   {e.get('adet', 0)} adet · ≈{e.get('fiyat', 0):.2f} ₺ "
+                 f"· maliyet {e.get('maliyet', 0):.0f} ₺")
+        s.append(f"   stop <b>{e.get('stop', 0):.2f}</b> · "
+                 f"hedef <b>{e.get('hedef', 0):.2f}</b> · "
+                 f"risk {e.get('risk_tl', 0):.0f} ₺")
+        tavan = e.get("tavan_fiyat") or 0
+        if tavan:
+            s.append(f"   {tavan:.2f} ₺ üstünde açarsa bu emri GEÇ (tavan)")
+        s.append("")
+
+    s.append("<i>Rakamlar dünkü kapanışa göre. Boşluklu açılışta giriş "
+             "fiyatı değişir; adet ve stop da onunla kayar.</i>")
+    return "\n".join(s)
+
+
 def stop_uyarisi(pozisyon: dict, fiyat: float, tur: str) -> str:
     """Stop ya da hedef seviyesine yaklaşma/geçme uyarısı.
 

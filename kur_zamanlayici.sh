@@ -31,10 +31,34 @@ RandomizedDelaySec=120
 [Install]
 WantedBy=timers.target
 TMR
+  cat > ~/.config/systemd/user/midas-sabah.service <<SRV
+[Unit]
+Description=Midas Analist sabah emir hatırlatıcısı
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=$KOK
+EnvironmentFile=-$KOK/.env
+ExecStart=$KOK/sabah.sh
+SRV
+  cat > ~/.config/systemd/user/midas-sabah.timer <<TMR
+[Unit]
+Description=Midas Analist sabah hatırlatıcı (iş günleri ${SABAH:-09:45})
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* ${SABAH:-09:45}:00
+# Persistent yok: kaçırılan sabah hatırlatması sonradan gönderilmemeli.
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target
+TMR
   systemctl --user daemon-reload
   systemctl --user enable --now midas-gunluk.timer
+  systemctl --user enable --now midas-sabah.timer
   loginctl enable-linger "$USER" 2>/dev/null || true
-  echo "✓ systemd zamanlayıcı kuruldu (iş günleri $SAAT)"
+  echo "✓ systemd zamanlayıcı kuruldu — akşam $SAAT, sabah ${SABAH:-09:45}"
   echo
   systemctl --user list-timers midas-gunluk.timer --no-pager 2>/dev/null | head -3
   echo

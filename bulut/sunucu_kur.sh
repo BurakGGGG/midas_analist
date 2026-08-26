@@ -160,6 +160,39 @@ WantedBy=timers.target
 TMR
 
 
+# Sabah emir hatırlatıcısı. Sinyal akşam üretilir, işlem ertesi sabah
+# AÇILIŞTA yapılır — arada 16 saat vardır ve kimse hatırlatmıyordu.
+# 09:45: sürekli işlem 10:00'da başlıyor, mesajı görüp emri yetiştirecek
+# kadar erken. Yeni analiz yapmaz, ambardaki kaydı okur; saniyeler sürer.
+sudo tee /etc/systemd/system/midas-sabah.service >/dev/null <<SRV
+[Unit]
+Description=Midas Analist sabah emir hatırlatıcısı
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=$KULLANICI
+WorkingDirectory=$KOK
+EnvironmentFile=$KOK/.env
+ExecStart=$KOK/sabah.sh
+SRV
+
+sudo tee /etc/systemd/system/midas-sabah.timer >/dev/null <<TMR
+[Unit]
+Description=Midas Analist sabah hatırlatıcı (iş günleri 09:45)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 09:45:00
+# Persistent BİLEREK yok: kaçırılan sabah hatırlatması sonradan
+# gönderilmemeli. Öğlen gelen "bugün açılışta şunu al" mesajı yanlış
+# bilgidir — açılış çoktan geçmiştir.
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target
+TMR
+
 # Telegram botu: gelen komutları işler ve seans içinde stop/hedef kontrolü
 # yapar. 5 dakikada bir çalışır — sürekli açık bir süreç değil, çökerse
 # bir sonraki turda kendiliğinden toparlanır.
@@ -198,6 +231,7 @@ TMR
 sudo systemctl daemon-reload
 sudo systemctl enable --now midas-api.service
 sudo systemctl enable --now midas-gunluk.timer
+sudo systemctl enable --now midas-sabah.timer
 sudo systemctl enable --now midas-bot.timer
 
 # ─────────────────────────────────────────────── 6) Caddy + HTTPS
@@ -261,7 +295,7 @@ echo "  Adres  : https://$ALAN"
 echo "  Sağlık : curl https://$ALAN/saglik"
 echo ""
 echo "  API    : systemctl status midas-api"
-echo "  Zaman  : systemctl list-timers midas-gunluk.timer"
+echo "  Zaman  : systemctl list-timers 'midas-*'"
 echo "  Kayıt  : tail -f $KOK/veri/gunluk.log"
 echo ""
 echo "  Oracle konsolunda Security List'te 80 ve 443 açık DEĞİLSE"

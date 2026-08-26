@@ -356,10 +356,21 @@ def gun_ozeti(tarih: str, adaylar: list, sermaye: float) -> dict:
             {"sembol": f["sembol"], "degisim": f["degisim"],
              "kapanis": f["kapanis"], "onceki": f["onceki"]}
             for f in fiyatlar[-6:][::-1]],
+        # Pozisyon rakamları (adet/stop/hedef) BİLEREK saklanıyor: sabah
+        # hatırlatıcısı (cekirdek/sabah.py) yeni analiz yapmadan bu kaydı
+        # okuyup emir bilgilerini gönderiyor. Yalnızca sembol ve fiyat
+        # saklansaydı, sabah "ne kadar alacağım, stopu nereye koyacağım"
+        # sorusu yine cevapsız kalırdı.
         "sinyal_veren": [
             {"sembol": a.sembol, "skor": a.skor, "sinyaller": a.sinyaller,
              "fiyat": a.fiyat,
              "alinabilir": bool(a.pozisyon and a.pozisyon.uygulanabilir),
+             "adet": (a.pozisyon.adet if a.pozisyon else 0),
+             "stop": (a.pozisyon.stop if a.pozisyon else 0.0),
+             "hedef": (a.pozisyon.hedef if a.pozisyon else 0.0),
+             "maliyet": (a.pozisyon.maliyet if a.pozisyon else 0.0),
+             "risk_tl": (a.pozisyon.risk_tl if a.pozisyon else 0.0),
+             "uyari": (a.pozisyon.uyari if a.pozisyon else ""),
              # Gün özeti taramadan AYRI bir ekran; karantina orada da
              # görünmezse kullanıcı zayıf sicilli sinyali onaylanmış sanır.
              "karantina": [x for x in (a.sinyaller or []) if x in _onerilmeyen],
