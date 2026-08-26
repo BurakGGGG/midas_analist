@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adaptive icon ARKA katmanı. Tam kanama: kenarları maske yiyecek, o yüzden
+  kenara hiçbir anlam konmaz — yalnızca zemin ve ızgara.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"
+     viewBox="0 0 512 512" shape-rendering="crispEdges">
+  <rect width="512" height="512" fill="#0A0C0A"/>
+  <g fill="#161B12">
+    <rect x="0" y="128" width="512" height="4"/>
+    <rect x="0" y="256" width="512" height="4"/>
+    <rect x="0" y="384" width="512" height="4"/>
+  </g>
+</svg>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adaptive icon ÖN katmanı (Android 8+).
+
+  Launcher bu katmanı kendi maskesiyle (daire, kare, squircle...) kırpar;
+  yalnızca ortadaki ~%66'lık alan her maskede görünür kalır. Bu yüzden:
+    · kenarlık YOK  — kırpılırdı
+    · zemin YOK     — arka katman veriyor
+    · mumlar 0,66 ile ortaya küçültüldü, güvenli alanın içinde
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"
+     viewBox="0 0 512 512" shape-rendering="crispEdges">
+  <g transform="translate(256,256) scale(0.66) translate(-256,-256)">
+    <g fill="#FF5C5C">
+      <rect x="110" y="300" width="16" height="104"/>
+      <rect x="88" y="316" width="60" height="72"/>
+    </g>
+    <g fill="#A3E635" opacity="0.75">
+      <rect x="202" y="252" width="16" height="120"/>
+      <rect x="180" y="268" width="60" height="84"/>
+    </g>
+    <g fill="#A3E635" opacity="0.88">
+      <rect x="294" y="184" width="16" height="136"/>
+      <rect x="272" y="204" width="60" height="96"/>
+    </g>
+    <g fill="#A3E635">
+      <rect x="386" y="100" width="16" height="172"/>
+      <rect x="364" y="124" width="60" height="128"/>
+    </g>
+  </g>
+</svg>

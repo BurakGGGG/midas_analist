@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- tema.dart'taki Renk.zemin ile AYNI değer. İkisi ayrışırsa açılışta
+         bir kare boyunca renk sıçraması görünür. -->
+    <color name="zemin">#FF0A0C0A</color>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 8+ uyarlanabilir ikon. Launcher iki katmanı kendi maskesiyle
+  (daire, squircle, kare...) birlikte kırpar; bu yüzden anlam taşıyan her
+  şey ÖN katmanın ortasındaki güvenli alanda durur.
+
+  Bu dosya olmadan launcher eski ic_launcher.png'yi alıp kendi kenar
+  maskesini uygular ve kare çerçeve kırpılır.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
