@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -25,11 +27,42 @@ android {
         versionName = flutter.versionName
     }
 
+    // Yayın imzası. key.properties VARSA onunla, yoksa debug anahtarıyla.
+    //
+    // NEDEN ÖNEMLİ: debug anahtarı ~/.android/debug.keystore'da durur,
+    // yedeklenmez ve makineye özeldir. Bir gün yenilenirse (yeni bilgisayar,
+    // sistem kurulumu, klasörün silinmesi) imza değişir; Android o andan
+    // sonra "üstüne kur"maya izin vermez ve tek yol kaldırıp yeniden
+    // kurmaktır — yani UYGULAMA VERİSİNİN TAMAMI SİLİNİR, geri dönüşü yok.
+    //
+    // Kendi anahtarını üretmek için:  mobil/anahtar_uret.sh
+    // Ürettikten sonra hem .jks dosyasını hem key.properties'i YEDEKLE.
+    // Kaybedersen aynı sonuç: bir daha asla üstüne kurulum yapamazsın.
+    val anahtarDosyasi = rootProject.file("key.properties")
+    val anahtar = Properties().apply {
+        if (anahtarDosyasi.exists()) anahtarDosyasi.inputStream().use { load(it) }
+    }
+
+    signingConfigs {
+        if (anahtarDosyasi.exists()) {
+            create("yayin") {
+                storeFile = file(anahtar.getProperty("storeFile"))
+                storePassword = anahtar.getProperty("storePassword")
+                keyAlias = anahtar.getProperty("keyAlias")
+                keyPassword = anahtar.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (anahtarDosyasi.exists()) {
+                signingConfigs.getByName("yayin")
+            } else {
+                // Geçici: `flutter run --release` çalışsın diye. Yukarıdaki
+                // nota bak — kalıcı çözüm değil.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

@@ -28,6 +28,10 @@ mobil/.flutter-plugins*
 mobil/android/.gradle/
 mobil/android/local.properties
 mobil/android/key.properties
+# İmza anahtarının kendisi. Varsayılan yeri repo dışı ($HOME) ama
+# yanlışlıkla içeri konursa da commit'lenmesin — kaybı telafi edilemez.
+*.jks
+*.keystore
 mobil/ios/Pods/
 mobil/linux/flutter/ephemeral/
 *.apk
