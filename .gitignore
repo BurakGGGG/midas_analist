@@ -32,6 +32,12 @@ mobil/android/key.properties
 # yanlışlıkla içeri konursa da commit'lenmesin — kaybı telafi edilemez.
 *.jks
 *.keystore
+
+# Firebase SERVİS HESABI anahtarı — gerçek sır, sunucu bununla bildirim
+# gönderiyor. google-services.json'dan farkı: o istemci yapılandırması ve
+# APK'nın içinde zaten dağıtılıyor; bu ise özel anahtar taşıyor.
+firebase-servis-hesabi*.json
+*-firebase-adminsdk-*.json
 mobil/ios/Pods/
 mobil/linux/flutter/ephemeral/
 *.apk

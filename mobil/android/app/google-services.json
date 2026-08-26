@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "118440393135",
+    "project_id": "midas-analist",
+    "storage_bucket": "midas-analist.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:118440393135:android:c8421d49d4b4fa690ad75a",
+        "android_client_info": {
+          "package_name": "com.burak.midas_analist"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUMb67KVQSsTk-vZqXoLM6OjqBX_CVMC0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
