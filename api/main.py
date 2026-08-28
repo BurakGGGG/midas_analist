@@ -197,7 +197,9 @@ def hisse(sembol: str, sermaye: float = 1000, grafik: bool = True,
 
 @app.get("/hisse/{sembol}/yapi")
 def hisse_yapi(sembol: str):
-    df = veri.fiyat_cek(sembol, gun=750)
+    # Baktığın tek hisse — tazelik burada da önemli, yük değil.
+    df = veri.fiyat_cek(sembol, gun=750,
+                        onbellek_saat=veri.seans_onbellegi())
     if df.empty or len(df) < 220:
         raise HTTPException(404, f"{sembol} için yeterli geçmiş yok")
     return guvenli(formasyon.tam_analiz(df))
@@ -298,7 +300,10 @@ def portfoy_kontrol(istek: PortfoyIstek):
     ek = endeks["Close"] if not endeks.empty else None
 
     for p in istek.pozisyonlar:
-        df = veri.fiyat_cek(p.sembol, gun=400, onbellek_saat=2.0)
+        # Kendi pozisyonların: seans içinde taze olmalı, stopa ne kadar
+        # yaklaştığın saatlik eski veriyle okunmaz.
+        df = veri.fiyat_cek(p.sembol, gun=400,
+                            onbellek_saat=veri.seans_onbellegi(2.0))
         if df.empty:
             sonuc.append({"sembol": p.sembol, "hata": "veri alınamadı"})
             continue
@@ -347,8 +352,14 @@ def portfoy_kontrol(istek: PortfoyIstek):
 
     maliyet = sum(p.adet * p.giris for p in istek.pozisyonlar)
     deger = sum(x.get("fiyat", 0) * x.get("adet", 0) for x in sonuc if "hata" not in x)
+    # Verinin ne zaman ÇEKİLDİĞİ — kullanıcı "bu sayı taze mi" diye
+    # sorabilmeli. Fiyatın ait olduğu an değil bizim aldığımız an; arayüz
+    # bunu "alındı" diye yazıyor, "itibarıyla" diye değil.
+    zamanlar = [z for z in (veri.veri_zamani(p.sembol)
+                            for p in istek.pozisyonlar) if z]
     return {
         "pozisyonlar": sonuc,
+        "veri_zamani": min(zamanlar) if zamanlar else None,
         "ozet": guvenli({
             "maliyet": maliyet, "deger": deger, "kar": deger - maliyet,
             "kar_yuzde": (deger / maliyet - 1) * 100 if maliyet else 0,
@@ -733,7 +744,8 @@ def egitmen_canli(istek: CanliIstek):
     pozlar = []
     for p in istek.pozisyonlar:
         try:
-            df = veri.fiyat_cek(p.sembol, gun=60, onbellek_saat=2.0)
+            df = veri.fiyat_cek(p.sembol, gun=60,
+                                onbellek_saat=veri.seans_onbellegi(2.0))
             if df.empty:
                 continue
             fiyat = float(df["Close"].iloc[-1])

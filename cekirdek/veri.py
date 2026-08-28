@@ -65,6 +65,51 @@ def _taze_mi(yol: Path, azami_saat: float, gerekli_baslangic: datetime | None = 
     return df.index[0] <= pd.Timestamp(gerekli_baslangic) + pd.Timedelta(days=10)
 
 
+def veri_zamani(sembol: str) -> str | None:
+    """Bu sembolün fiyatı EN SON NE ZAMAN ÇEKİLDİ (ISO).
+
+    Kullanıcıya "sayı ne kadar taze" sorusunu cevaplatmak için. Dikkat:
+    bu, fiyatın ait olduğu an değil, BİZİM çektiğimiz an. BIST verisi
+    kaynakta ayrıca gecikmeli olabiliyor; arayüz bunu "alındı" diye
+    yazmalı, "itibarıyla" diye değil — ikisi farklı iddialar.
+    """
+    try:
+        yol = _onbellek_yolu(yf_kodu(sembol), "1d")
+        if not yol.exists():
+            return None
+        return datetime.fromtimestamp(yol.stat().st_mtime).isoformat(
+            timespec="seconds")
+    except Exception:
+        return None
+
+
+def seans_ici_mi(an: datetime | None = None) -> bool:
+    """BIST şu an açık mı? Sürekli işlem 10:00-18:00, kapanış seansı 18:10."""
+    a = an or datetime.now()
+    return a.weekday() < 5 and (10 <= a.hour < 18 or
+                                (a.hour == 18 and a.minute <= 10))
+
+
+def seans_onbellegi(kapaliyken: float = 6.0, aciken: float = 0.08) -> float:
+    """Duruma göre önbellek ömrü.
+
+    NEDEN GEREKLİ: sabit 6 saat, seans içinde saatlerce eski fiyat
+    göstermek demekti. Kullanıcı öğlen bakıyor, sabah 10'un fiyatını
+    görüyordu ve Midas'takiyle tutmuyordu.
+
+    NEDEN KISA SÜRE YALNIZCA SEANS İÇİNDE: piyasa kapalıyken fiyat
+    değişmiyor; kapalıyken de sık çekmek boşuna istek, boşuna pil ve
+    Yahoo tarafında boşuna yük demek. Kapanıştan sonra 6 saat fazlasıyla
+    yeterli.
+
+    NEDEN 5 DAKİKA VE HERKES İÇİN DEĞİL: bu ömür yalnızca AZ SAYIDA
+    sembol için kullanılır — kendi pozisyonların ve baktığın hisse.
+    100 hisseyi 5 dakikada bir çekmek saatte 1200 istek eder ve Yahoo'nun
+    görünmez kısıtlamasına takılırsa günlük iş dahil her şey durur.
+    """
+    return aciken if seans_ici_mi() else kapaliyken
+
+
 def fiyat_cek(
     sembol: str,
     gun: int = 750,

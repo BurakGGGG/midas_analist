@@ -201,3 +201,60 @@ def test_rejim_notlarinda_nokta_ondalik_yok():
     for satir in kaynak.read_text(encoding="utf-8").splitlines():
         if "notlar.append" in satir:
             assert ":.0f}" not in satir and ":.1f}" not in satir, satir.strip()
+
+
+# ── seansa duyarlı önbellek ────────────────────────────────────────────────
+#
+# Sabit 6 saatlik önbellek, seans içinde saatlerce eski fiyat göstermek
+# demekti: kullanıcı öğlen bakıp sabah 10'un fiyatını görüyordu.
+
+from datetime import datetime as _dt
+
+
+def test_seans_saatleri_dogru():
+    from cekirdek.veri import seans_ici_mi
+    ac = [("2026-08-28 10:00", True),   # açılış
+          ("2026-08-28 13:45", True),
+          ("2026-08-28 17:59", True),
+          ("2026-08-28 18:05", True),   # kapanış seansı
+          ("2026-08-28 18:30", False),  # açık artırma bitti
+          ("2026-08-28 09:30", False),  # açılış öncesi
+          ("2026-08-29 12:00", False),  # cumartesi
+          ("2026-08-30 12:00", False)]  # pazar
+    for t, beklenen in ac:
+        assert seans_ici_mi(_dt.fromisoformat(t)) is beklenen, t
+
+
+def test_seans_disinda_uzun_onbellek():
+    """Piyasa kapalıyken fiyat değişmiyor; sık çekmek boşuna istek."""
+    from cekirdek import veri
+    import unittest.mock as m
+    with m.patch.object(veri, "seans_ici_mi", return_value=False):
+        assert veri.seans_onbellegi(6.0, 0.08) == 6.0
+
+
+def test_seans_icinde_kisa_onbellek():
+    from cekirdek import veri
+    import unittest.mock as m
+    with m.patch.object(veri, "seans_ici_mi", return_value=True):
+        assert veri.seans_onbellegi(6.0, 0.08) == 0.08
+
+
+def test_kisa_omur_makul_aralikta():
+    """Çok kısası Yahoo'nun görünmez kısıtlamasına takılma riski; çok
+    uzunu zaten çözmeye çalıştığımız sorun."""
+    from cekirdek.veri import seans_onbellegi
+    import unittest.mock as m
+    from cekirdek import veri
+    with m.patch.object(veri, "seans_ici_mi", return_value=True):
+        sure = seans_onbellegi()
+        assert 0.03 <= sure <= 0.25, f"{sure*60:.0f} dakika"
+
+
+def test_tarama_seans_omrunu_kullanmaz():
+    """100 hisseyi 5 dakikada bir çekmek saatte 1200 istek eder ve
+    engellenirsek günlük iş dahil her şey durur. Tazelik yalnızca az
+    sayıda sembol için: kendi pozisyonların ve baktığın hisse."""
+    import inspect
+    from cekirdek import tarayici
+    assert "seans_onbellegi" not in inspect.getsource(tarayici)

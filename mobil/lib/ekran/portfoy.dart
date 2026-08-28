@@ -151,9 +151,36 @@ class _PortfoyDurum extends State<PortfoyEkran> {
                   style: Theme.of(c).textTheme.bodySmall),
             ],
           ),
+          // "Bu sayı taze mi" sorusunun cevabı ekranda olmalı. Kullanıcı
+          // uygulamadaki değerle Midas'takini karşılaştırıp tutmayınca
+          // hangisine güveneceğini bilemiyordu.
+          //
+          // "ALINDI" diyor, "itibarıyla" demiyor: bu, fiyatın ait olduğu
+          // an değil BİZİM çektiğimiz an. Kaynak ayrıca gecikmeli
+          // olabiliyor ve ikisi farklı iddialar.
+          if (_veriZamani != null) ...[
+            const SizedBox(height: 6),
+            Text('Fiyatlar ${_veriZamani!} alındı',
+                style: Theme.of(c).textTheme.bodySmall
+                    ?.copyWith(color: Renk.metinSonuk)),
+          ],
         ],
       ),
     );
+  }
+
+  /// Sunucunun bildirdiği çekim zamanı, saat:dakika olarak.
+  String? get _veriZamani {
+    final iso = _veri?['veri_zamani'];
+    if (iso == null) return null;
+    final t = DateTime.tryParse('$iso')?.toLocal();
+    if (t == null) return null;
+    String i(int n) => n.toString().padLeft(2, '0');
+    final bugun = DateTime.now();
+    final ayniGun = t.year == bugun.year && t.month == bugun.month &&
+        t.day == bugun.day;
+    final saat = '${i(t.hour)}:${i(t.minute)}';
+    return ayniGun ? saat : '${i(t.day)}.${i(t.month)} $saat';
   }
 
   Widget _kart(BuildContext c, Sem sem, Map<String, dynamic> p) {
