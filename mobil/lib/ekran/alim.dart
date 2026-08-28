@@ -296,6 +296,27 @@ class _AlimDurum extends State<AlimEkran> {
               ),
             ),
           ],
+          // Uyarı ne yapılacağını söylüyor; yapmayı da sunmalı.
+          // "Tezini yaz" deyip kullanıcıyı arayışa bırakmak yarım iş —
+          // hele ki tez yazma ekranı iki dokunuş uzaktayken.
+          if ('${u['kod']}' == 'tez_yok') ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                // Dönüşte kontrol yenileniyor: tez yazıldıysa "tez yok"
+                // uyarısı kalkmalı, yoksa kullanıcı yazdığı halde uyarıyı
+                // görmeye devam eder ve kilidi elle açmak zorunda kalır.
+                onPressed: () => Navigator.push<void>(
+                    c,
+                    MaterialPageRoute(
+                        builder: (_) => TezYazEkran(widget.sembol,
+                            fiyat: _d(_fiyat)))).then((_) => _kontrolEt()),
+                icon: const Icon(Icons.edit_note_sharp, size: 18),
+                label: const Text('TEZİNİ YAZ'),
+              ),
+            ),
+          ],
         ],
       ),
     );

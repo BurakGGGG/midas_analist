@@ -121,7 +121,13 @@ def alim_oncesi(sembol: str, fiyat: float, adet: int, sermaye: float,
         u.append(Uyari("tez_yok", "dur", "Bu alım için yazılı tezin yok",
             "Neden aldığını yazmadıysan, düştüğünde neden tuttuğunu da bilemezsin. "
             "O boşluğu umut doldurur.",
-            f"python analist.py tez {sembol.upper()}  → önce tezini yaz"))
+            # KANAL-BAĞIMSIZ: burada eskiden CLI komutu yazıyordu
+            # ("python analist.py tez ...") ve bu metin mobil uygulamada
+            # da görünüyordu — telefonda çalıştırılamayan bir öneri.
+            # Uyarı ne yapılacağını söyler; NASIL yapılacağını istemci
+            # bilir (mobilde Tez yaz ekranı, CLI'da tez komutu).
+            "Önce tezini yaz: neden alıyorsun ve hangi durumda "
+            "yanıldığını kabul edeceksin?"))
 
     return sorted(u, key=lambda x: -x.agirlik)
 

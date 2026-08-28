@@ -19,7 +19,12 @@ import 'dart:convert';
 import 'package:midas_analist/ekran/alistirma.dart';
 import 'package:midas_analist/ekran/ayarlar.dart';
 import 'package:midas_analist/ekran/defter.dart';
+import 'package:midas_analist/ekran/alim.dart';
+import 'package:midas_analist/ekran/bugun.dart';
 import 'package:midas_analist/ekran/ders.dart';
+import 'package:midas_analist/ekran/ilerleme.dart';
+import 'package:midas_analist/ekran/ogret.dart';
+import 'package:midas_analist/ekran/tez_yaz.dart';
 import 'package:midas_analist/ekran/hisse.dart';
 import 'package:midas_analist/ekran/makro.dart';
 import 'package:midas_analist/ekran/mufredat.dart';
@@ -104,6 +109,31 @@ class _SahteApi extends Api {
 
   @override
   Future<Map<String, dynamic>> makro({bool grafik = false}) async => _t('makro');
+
+  @override
+  Future<Map<String, dynamic>> gununDersi(
+          {int portfoyAdet = 0, List<String> okunan = const []}) async =>
+      _t('gunders');
+
+  @override
+  Future<Map<String, dynamic>> egitmenCanli(
+          {required double sermaye, int azami = 2,
+          List<Pozisyon> pozisyonlar = const []}) async =>
+      _t('canli');
+
+  @override
+  Future<Map<String, dynamic>> tezAnlik(String sembol,
+          {double sermaye = 1000}) async =>
+      _t('tezanlik');
+
+  @override
+  Future<Map<String, dynamic>> alimKontrol({
+    required String sembol, required int adet, required double fiyat,
+    required double sermaye, required bool tezVarMi,
+    required List<Pozisyon> acik,
+    List<Map<String, dynamic>> gecmis = const [],
+  }) async =>
+      _t('alim');
 
   @override
   Future<Map<String, dynamic>> sektor() async => _t('sektor');
@@ -651,6 +681,68 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/sirket_oku.png'));
+  });
+
+  testWidgets('bugun', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1900));
+    await t.pumpWidget(_sarmala(const BugunEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/bugun.png'));
+  });
+
+  testWidgets('ogret', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await egitmen.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1600));
+    await t.pumpWidget(_sarmala(const OgretEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/ogret.png'));
+  });
+
+  testWidgets('ilerleme', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await egitmen.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1900));
+    await t.pumpWidget(_sarmala(const IlerlemeEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/ilerleme.png'));
+  });
+
+  testWidgets('alim', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1600));
+    await t.pumpWidget(_sarmala(const AlimEkran('GESAN', baslangicFiyat: 92.2)));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/alim.png'));
+  });
+
+  testWidgets('tez_yaz', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1400));
+    await t.pumpWidget(_sarmala(const TezYazEkran('GESAN', fiyat: 92.2)));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/tez_yaz.png'));
   });
 
   testWidgets('alistirma mod secimi', (t) async {
