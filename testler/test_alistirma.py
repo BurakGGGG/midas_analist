@@ -41,9 +41,15 @@ def test_bosluklu_acilista_stop_ACILISTAN_calisir():
     assert c.fiyat == 88.0, "stop fiyatından değil AÇILIŞTAN çıkmalı"
 
 
-def test_bosluklu_acilista_hedef_ACILISTAN_calisir():
+def test_hedefin_ustunde_acan_hisse_HEDEFTEN_cikar():
+    """Gerçekte limit satışın 115'te dolardı ve daha çok kazanırdın.
+    Ama backtest hedef fiyatından çıkarıyor (backtest.py:194) ve iki
+    yerin farklı davranması simülatörü backtest'ten sistematik olarak
+    daha iyi gösterirdi. Kötümserlik iki yönde de tutarlı: boşluk
+    aşağıysa açılıştan çıkıyoruz, yukarıysa hedeften."""
     c = al.cikis_kontrol(POZ, _bar(115, 118, 114, 117))
-    assert c and c.sebep == "hedef" and c.fiyat == 115.0
+    assert c and c.sebep == "hedef"
+    assert c.fiyat == 110.0, "açılıştan değil HEDEFTEN çıkmalı"
 
 
 def test_ayni_gun_ikisi_de_gorulduyse_STOP_sayilir():
@@ -244,3 +250,266 @@ def test_tutar_gorevi_aritmetigi_dogru():
     g = ag.gorev_getir("g02")
     s = g.senaryo
     assert abs(s["adet"] * s["fiyat"] - float(g.dogru)) <= g.tolerans
+
+
+# ═══════════════════════════════════ backtest ile denklik (asıl sınama)
+#
+# Modül "çıkış kuralları backtest ile birebir aynı" diyor. Bu iddia bir
+# kez yanlıştı: hedefin üstünde açan hisse burada AÇILIŞTAN çıkıyordu,
+# backtest'te HEDEFTEN. Fark küçük ama tek yönlü — simülatör backtest'ten
+# sistematik olarak daha kârlı görünüyordu.
+#
+# Bu test iddiayı koda bağlıyor: GERÇEK backtest koşuluyor ve her
+# işlemin çıkışı `cikis_kontrol` ile yeniden üretiliyor.
+
+import pytest
+
+
+@pytest.fixture(scope="module")
+def gercek_veri():
+    from cekirdek import veri, evren, gostergeler
+    ek = veri.fiyat_cek(evren.ENDEKS, gun=900)
+    ek_s = ek["Close"] if ek is not None and not ek.empty else None
+    d = {}
+    for sem in ["THYAO", "EREGL", "ASELS", "SISE", "KCHOL", "TUPRS"]:
+        g = veri.fiyat_cek(sem, gun=900)
+        if g is not None and not g.empty:
+            d[sem] = gostergeler.gosterge_seti(g, ek_s)
+    if len(d) < 4:
+        pytest.skip("yeterli fiyat verisi yok")
+    return d
+
+
+def test_cikislar_backtest_ile_KURUSUNA_KADAR_ayni(gercek_veri):
+    """Backtest'in kapattığı her işlem, aynı barlarda `cikis_kontrol`
+    ile aynı fiyattan ve aynı günde kapanmalı."""
+    from cekirdek import backtest
+    from cekirdek.strateji import STRATEJILER
+    from cekirdek.risk import RiskAyarlari
+
+    kayma = 15.0 / 10_000.0
+    karsilastirilan = 0
+
+    for ad in ("trend", "tepki", "kirilim"):
+        sonuc = backtest.calistir(gercek_veri, STRATEJILER[ad],
+                                  RiskAyarlari(sermaye=100_000), kayma_bp=15.0)
+        for islem in sonuc.islemler:
+            # Süre-doldu ve sinyal çıkışları simülatörde YOK (bilinçli):
+            # orada stopu kullanıcı koyuyor, arkasında strateji olmayabilir.
+            if islem.sebep not in ("stop", "hedef", "boşluklu stop"):
+                continue
+            if islem.cikis_tarih is None:
+                continue
+
+            poz = {"sembol": islem.sembol, "stop": islem.stop,
+                   "hedef": islem.hedef}
+            d = gercek_veri[islem.sembol]
+            # Giriş günü DAHİL: backtest o gün de gün içi çıkışa bakıyor.
+            dilim = d.loc[islem.giris_tarih:islem.cikis_tarih]
+
+            bulunan = None
+            for t, satir in dilim.iterrows():
+                bar = al.Bar(
+                    tarih=t.strftime("%Y-%m-%d"),
+                    acilis=float(satir["Open"]), yuksek=float(satir["High"]),
+                    dusuk=float(satir["Low"]), kapanis=float(satir["Close"]),
+                    onceki_kapanis=0.0, atr=0.0)
+                c = al.cikis_kontrol(poz, bar)
+                if c:
+                    bulunan = (t, c)
+                    break
+
+            assert bulunan is not None, (
+                f"{ad}/{islem.sembol}: backtest {islem.sebep} ile çıktı, "
+                f"simülatör hiç çıkmadı")
+            t, c = bulunan
+            assert t == islem.cikis_tarih, (
+                f"{ad}/{islem.sembol}: çıkış GÜNÜ farklı — "
+                f"backtest {islem.cikis_tarih.date()}, simülatör {t.date()}")
+            # 4 basamak: backtest boşluk dalında round(fiyat, 4) yapıyor,
+            # gün içi dalında yapmıyor. Kuruşun on binde biri.
+            bizim = round(c.fiyat * (1 - kayma), 4)
+            assert bizim == pytest.approx(round(islem.cikis, 4), abs=1e-4), (
+                f"{ad}/{islem.sembol} {t.date()}: çıkış FİYATI farklı — "
+                f"backtest {islem.cikis:.4f}, simülatör {bizim:.4f}")
+            karsilastirilan += 1
+
+    assert karsilastirilan >= 20, (
+        f"yalnızca {karsilastirilan} işlem karşılaştırıldı — test bir şey "
+        f"kanıtlamıyor")
+
+
+# ═══════════════════════════════════════════════ simülasyon motoru
+
+def _sahte_bar(kapanis, acilis=None, onceki=None, tarih="2024-06-12"):
+    a = acilis if acilis is not None else kapanis
+    return al.Bar(tarih=tarih, acilis=a, yuksek=max(a, kapanis),
+                  dusuk=min(a, kapanis), kapanis=kapanis,
+                  onceki_kapanis=onceki if onceki is not None else kapanis,
+                  atr=kapanis * 0.02)
+
+
+# ── kayma yönü ─────────────────────────────────────────────────────────────
+
+def test_alista_kayma_YUKARI_satista_ASAGI():
+    """Kaymanın yönü hep kullanıcının aleyhine. Ters yön, simülatörü
+    gerçekten daha kârlı gösterirdi."""
+    b = _sahte_bar(100.0)
+    alis = al.al_kontrol(b, 1, 10_000)
+    assert alis["gecti"] and alis["fiyat"] > 100.0
+
+    satis = al.sat({"sembol": "X", "adet": 1}, b)
+    assert satis["gecti"] and satis["fiyat"] < 100.0
+
+
+def test_kayma_backtest_ile_ayni_oran():
+    assert al.KAYMA_BP == 15.0
+
+
+def test_kaymasiz_istenirse_ham_fiyat():
+    b = _sahte_bar(100.0)
+    assert al.al_kontrol(b, 1, 10_000, kayma_bp=0)["fiyat"] == 100.0
+
+
+# ── alım kapıları ──────────────────────────────────────────────────────────
+
+def test_tavanda_acan_hisse_ALINAMAZ():
+    """Eskiden yalnızca bayrak dönüyordu ve telefon uyarı gösterip
+    alıma izin veriyordu. Backtest bu emri hiç doldurmuyor."""
+    b = _sahte_bar(120.0, acilis=120.0, onceki=100.0)
+    assert b.tavan_mi is True
+    r = al.al_kontrol(b, 1, 10_000)
+    assert r["gecti"] is False and "tavan" in r["sebep"].lower()
+
+
+def test_bakiye_yetmezse_alinamaz():
+    r = al.al_kontrol(_sahte_bar(100.0), 50, 1_000)
+    assert r["gecti"] is False and "Bakiye" in r["sebep"]
+
+
+def test_sifir_adet_alinamaz():
+    assert al.al_kontrol(_sahte_bar(100.0), 0, 10_000)["gecti"] is False
+
+
+def test_veri_yoksa_alinamaz():
+    assert al.al_kontrol(None, 1, 10_000)["gecti"] is False
+
+
+# ── satış ──────────────────────────────────────────────────────────────────
+
+def test_kismi_satis_kalani_birakir():
+    r = al.sat({"sembol": "X", "adet": 10}, _sahte_bar(100.0), adet=4)
+    assert r["adet"] == 4 and r["kalan_adet"] == 6
+
+
+def test_adet_sifirsa_tamami_satilir():
+    r = al.sat({"sembol": "X", "adet": 10}, _sahte_bar(100.0), adet=0)
+    assert r["adet"] == 10 and r["kalan_adet"] == 0
+
+
+def test_acikta_olandan_fazlasi_satilamaz():
+    r = al.sat({"sembol": "X", "adet": 3}, _sahte_bar(100.0), adet=99)
+    assert r["adet"] == 3 and r["kalan_adet"] == 0
+
+
+# ── değerleme ──────────────────────────────────────────────────────────────
+
+def test_deger_nakit_ve_piyasayi_toplar(monkeypatch):
+    monkeypatch.setattr(al, "gun", lambda s, t=None: _sahte_bar(110.0))
+    d = al.deger([{"sembol": "X", "adet": 10, "giris": 100.0,
+                   "stop": 90.0, "hedef": 130.0}], 5_000, "2024-06-12")
+    assert d["piyasa"] == 1100.0
+    assert d["ozkaynak"] == 6100.0
+    assert d["acik_kar"] == 100.0
+    s = d["satirlar"][0]
+    assert s["stop_uzaklik"] == pytest.approx(18.18, abs=0.01)
+    assert s["hedef_uzaklik"] == pytest.approx(18.18, abs=0.01)
+
+
+def test_fiyat_bulunamazsa_SON_BILINEN_korunur(monkeypatch):
+    """Sıfır saymak özkaynak eğrisinde sahte bir çöküş çizerdi ve
+    kullanıcı olmayan bir kaybı öğrenirdi."""
+    monkeypatch.setattr(al, "gun", lambda s, t=None: None)
+    d = al.deger([{"sembol": "X", "adet": 10, "giris": 100.0}],
+                 0, "2024-06-12")
+    assert d["piyasa"] == 1000.0
+    assert d["satirlar"][0]["veri_var"] is False
+
+
+def test_bos_portfoy_nakite_esit():
+    d = al.deger([], 10_000, "2024-06-12")
+    assert d["ozkaynak"] == 10_000 and d["satirlar"] == []
+
+
+# ── motor: adım ────────────────────────────────────────────────────────────
+
+def test_pozisyon_YOKKEN_de_gun_ilerler():
+    """Kullanıcı tarih seçip 'yarına bakayım' dediğinde eskiden uç 400
+    dönüyordu. Takvim referans sembolden okunuyor."""
+    r = al.adim([], 10_000, "2024-06-12", adim_sayisi=1)
+    assert r["bitti"] is False
+    assert r["tarih"] > "2024-06-12"
+    assert r["nakit"] == 10_000
+
+
+def test_bir_hafta_tek_turda_bes_gun_ilerler():
+    r = al.adim([], 10_000, "2024-06-12", adim_sayisi=5)
+    assert len(r["gunler"]) == 5
+    assert r["tarih"] == r["gunler"][-1]
+
+
+def test_her_gun_icin_ozkaynak_noktasi_uretilir():
+    r = al.adim([], 10_000, "2024-06-12", adim_sayisi=5)
+    assert len(r["ozkaynak_noktalari"]) == 5
+    assert all(n["d"] == 10_000 for n in r["ozkaynak_noktalari"])
+    assert [n["t"] for n in r["ozkaynak_noktalari"]] == r["gunler"]
+
+
+def test_takvim_hafta_sonlarini_atlar():
+    g = al.takvim("2024-06-12", "2024-06-25")
+    assert g, "takvim boş"
+    import datetime as _dt
+    for t in g:
+        assert _dt.date.fromisoformat(t).weekday() < 5
+
+
+def test_veri_bitince_bitti_isareti():
+    son = al.aralik()["en_gec"]
+    r = al.adim([], 10_000, son, adim_sayisi=50)
+    # Son günden sonra en fazla bir gün var (aralik son günü dışarıda bırakır)
+    assert r["bitti"] or len(r["gunler"]) <= 2
+
+
+def test_kapanana_kadar_pozisyon_kapaninca_durur():
+    """adim_sayisi=0 → hepsi kapanana kadar."""
+    b = al.gun("THYAO", "2024-06-12")
+    poz = [{"sembol": "THYAO", "adet": 1, "giris": b.kapanis,
+            "stop": b.kapanis * 0.98,     # yakın stop: hızlı kapanmalı
+            "hedef": b.kapanis * 1.02, "tarih": b.tarih}]
+    r = al.adim(poz, 1_000, "2024-06-12", adim_sayisi=0)
+    assert r["pozisyonlar"] == [], "pozisyon kapanmadı"
+    assert len(r["cikislar"]) == 1
+    assert r["cikislar"][0]["sebep"] in ("stop", "hedef")
+
+
+def test_cikista_da_kayma_uygulanir():
+    b = al.gun("THYAO", "2024-06-12")
+    poz = [{"sembol": "THYAO", "adet": 1, "giris": b.kapanis,
+            "stop": b.kapanis * 0.98, "hedef": b.kapanis * 1.02,
+            "tarih": b.tarih}]
+    r = al.adim(poz, 0, "2024-06-12", adim_sayisi=0)
+    c = r["cikislar"][0]
+    assert c["fiyat"] < c["ham_fiyat"], "çıkışta kayma aşağı olmalı"
+
+
+def test_azami_adim_sonsuz_dongu_engeller():
+    r = al.adim([], 10_000, "2024-06-12", adim_sayisi=0, azami_adim=3)
+    assert len(r["gunler"]) <= 3
+
+
+def test_aralik_son_gunu_disarida_birakir():
+    """Kullanıcı son güne başlarsa simülasyon başlar başlamaz biterdi."""
+    a = al.aralik()
+    assert a["en_erken"] < a["en_gec"] < "2030-01-01"
+    t = al.takvim(a["en_gec"])
+    assert len(t) >= 2, "en_gec'ten sonra ilerlenecek gün kalmalı"

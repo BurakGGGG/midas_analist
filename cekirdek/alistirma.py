@@ -18,9 +18,16 @@ sıfırlanıyor, karar defterine ve sermaye defterine HİÇ dokunmuyor.
 
 ÇIKIŞ KURALLARI BACKTEST İLE BİREBİR AYNI (bkz. cekirdek/backtest.py):
 boşluklu açılışta stop AÇILIŞTAN çalışır, aynı gün hem stop hem hedef
-görüldüyse kötümser varsayımla stop sayılır. Alıştırmada stop başka
-türlü çalışsaydı kullanıcı yanlış şey öğrenir ve gerçek işlemde
-şaşırırdı — alıştırmanın tek işi gerçeğe hazırlamak.
+görüldüyse kötümser varsayımla stop sayılır, hedefin üstünde açan hisse
+hedef fiyatından çıkar. Alıştırmada stop başka türlü çalışsaydı kullanıcı
+yanlış şey öğrenir ve gerçek işlemde şaşırırdı — alıştırmanın tek işi
+gerçeğe hazırlamak. Bu eşitlik testle kilitli (test_alistirma.py):
+gerçek backtest koşulup her işlemin çıkışı burada yeniden üretiliyor.
+
+TEK BİLİNEN FARK: backtest'in süre-doldu ve strateji-çıkış kuralları
+burada yok. Simülatörde stopu ve hedefi kullanıcı koyuyor, arkasında
+bir strateji olmayabilir; pozisyonu zorla kapatmak kullanıcının kendi
+kararını elinden almak olurdu.
 
 DURUM TELEFONDA: bu modül saf hesap yapıyor, hiçbir şey saklamıyor.
 Kum havuzunun bakiyesi ve pozisyonları telefonda yaşıyor ve bulut
@@ -173,6 +180,13 @@ def cikis_kontrol(pozisyon: dict, bar: Bar) -> Cikis | None:
       2) Gün içi stop, hedeften ÖNCE bakılır: aynı gün ikisi de görüldüyse
          kötümser varsayım. Hangisinin önce olduğunu günlük barla bilemeyiz;
          iyimser varsaymak sonuçları sistematik olarak güzelleştirirdi.
+      3) Hedefin ÜSTÜNDE açan hisse yine HEDEF fiyatından çıkar, açılıştan
+         değil. Gerçekte limit satışın açılışta dolardı ve daha çok
+         kazanırdın — ama backtest böyle modellemiyor (backtest.py:194) ve
+         iki yerin farklı davranması, simülatörün backtest'ten sistematik
+         olarak daha iyi görünmesi demekti. Kullanıcı hangi rakama
+         güveneceğini bilemezdi. Boşluk AŞAĞI yönde açılıştan işleniyor
+         (madde 1); ikisi de kullanıcının aleyhine ve bu bilinçli.
     """
     stop = float(pozisyon.get("stop") or 0)
     hedef = float(pozisyon.get("hedef") or 0)
@@ -182,8 +196,6 @@ def cikis_kontrol(pozisyon: dict, bar: Bar) -> Cikis | None:
         return Cikis(sem, bar.acilis, "stop", bar.tarih)
     if stop > 0 and bar.dusuk <= stop:
         return Cikis(sem, stop, "stop", bar.tarih)
-    if hedef > 0 and bar.acilis >= hedef:
-        return Cikis(sem, bar.acilis, "hedef", bar.tarih)
     if hedef > 0 and bar.yuksek >= hedef:
         return Cikis(sem, hedef, "hedef", bar.tarih)
     return None
@@ -219,3 +231,281 @@ def adet_oner(bakiye: float, fiyat: float, stop: float,
             "hisse_basi_risk": round(hisse_basi_risk, 4),
             "maliyet": round(max(0, adet) * fiyat, 2),
             "baglayici": baglayici}
+
+
+# ══════════════════════════════════════════════════════ simülasyon motoru
+#
+# Buradan aşağısı "Sanal İşlem" ekranını besliyor: tarih seç, al, günleri
+# ilerlet, portföyünü izle. Yukarıdaki tek-bar yardımcıları duruyor —
+# bunlar onların çok günlü ve çok sembollü hâli.
+#
+# KAYMA BACKTEST İLE AYNI. Kum havuzunun ilk hâli kayma uygulamıyordu ve
+# bu, simülatörü backtest'ten sistematik olarak ~%0,3 daha iyi
+# gösteriyordu. İki ekranın farklı gerçeklik anlatması, kullanıcının
+# hangisine güveneceğini bilememesi demek.
+KAYMA_BP = 15.0        # tek yön, baz puan (15bp = %0,15)
+
+# Pozisyonu olmayan kullanıcı da günleri ilerletebilmeli. Takvim bir
+# referans sembolden okunuyor; endeksin kendisi değil çünkü XU100
+# serisi bazı günlerde hisselerden ayrışıyor.
+TAKVIM_SEMBOLU = "THYAO"
+
+# Süreç içi seri önbelleği. `/alistirma/adim` bir haftayı tek turda
+# ilerletirken aynı seriyi 5 kez okumamalı; disk okuması + ATR hesabı
+# sembol başına ~1,5 ms ve 100 sembolde bu 0,75 saniyeye çıkıyor.
+_SERI_ONBELLEK: dict[str, tuple[float, pd.DataFrame]] = {}
+_ONBELLEK_OMRU_SN = 300.0
+
+
+def _onbellekli_seri(sembol: str) -> pd.DataFrame:
+    import time
+    simdi = time.time()
+    kayit = _SERI_ONBELLEK.get(sembol)
+    if kayit and simdi - kayit[0] < _ONBELLEK_OMRU_SN:
+        return kayit[1]
+    d = _seri(sembol)
+    _SERI_ONBELLEK[sembol] = (simdi, d)
+    return d
+
+
+def onbellegi_bosalt() -> None:
+    """Testler ve uzun süreçler için."""
+    _SERI_ONBELLEK.clear()
+
+
+def seri(sembol: str, baslangic: str | None = None,
+         bitis: str | None = None) -> pd.DataFrame:
+    """Tarih aralığının OHLCV + ATR'si. Simülatörün tek veri kapısı."""
+    d = _onbellekli_seri(sembol)
+    if d.empty:
+        return d
+    try:
+        if baslangic:
+            d = d[d.index >= pd.Timestamp(baslangic)]
+        if bitis:
+            d = d[d.index <= pd.Timestamp(bitis)]
+    except Exception:
+        return pd.DataFrame()
+    return d
+
+
+def takvim(baslangic: str, bitis: str | None = None,
+           sembol: str = TAKVIM_SEMBOLU) -> list[str]:
+    """Aralıktaki işlem günleri — VERİ ENDEKSİNDEN.
+
+    Tatil tablosu kullanılmıyor: `gunluk.TATILLER_2026` yalnızca 2026'yı
+    biliyor ve `np.busday_count` Türk tatillerini hiç bilmiyor. Borsanın
+    açık olduğu günler zaten serinin endeksinde duruyor.
+    """
+    d = seri(sembol, baslangic, bitis)
+    return [t.strftime("%Y-%m-%d") for t in d.index]
+
+
+def aralik(sembol: str = TAKVIM_SEMBOLU) -> dict:
+    """Kullanıcının takvimden seçebileceği en erken/en geç gün.
+
+    Sabit bir tarih yazmak yanlış olurdu: aralık önbellekteki veriye
+    bağlı ve kurulumdan kuruluma değişiyor.
+    """
+    d = _onbellekli_seri(sembol)
+    if d.empty:
+        return {"en_erken": "", "en_gec": "", "gun_sayisi": 0}
+    # Son gün DIŞARIDA: kullanıcı son güne başlarsa "sonraki gün" hemen
+    # tükenir ve simülasyon başlar başlamaz biter.
+    return {"en_erken": d.index[0].strftime("%Y-%m-%d"),
+            "en_gec": d.index[-2].strftime("%Y-%m-%d") if len(d) > 1
+                      else d.index[-1].strftime("%Y-%m-%d"),
+            "gun_sayisi": len(d)}
+
+
+# ── değerleme ──────────────────────────────────────────────────────────────
+
+def deger(pozisyonlar: list[dict], nakit: float, tarih: str) -> dict:
+    """Portföyün o günkü değeri.
+
+    İŞLEM GÖRMEYEN GÜNDE SON BİLİNEN FİYAT KORUNUR (backtest de öyle
+    yapıyor). Fiyatı bulunamayan hisseyi sıfır saymak özkaynak eğrisinde
+    sahte bir çöküş çizerdi ve kullanıcı olmayan bir kaybı öğrenirdi.
+    """
+    satirlar, piyasa, maliyet = [], 0.0, 0.0
+    for p in pozisyonlar or []:
+        sem = p.get("sembol", "")
+        adet = int(p.get("adet") or 0)
+        giris = float(p.get("giris") or 0)
+        b = gun(sem, tarih)
+        fiyat = b.kapanis if b else giris     # fiyat yoksa girişe düş
+        d_maliyet = adet * giris
+        d_piyasa = adet * fiyat
+        piyasa += d_piyasa
+        maliyet += d_maliyet
+        stop = float(p.get("stop") or 0)
+        hedef = float(p.get("hedef") or 0)
+        satirlar.append({
+            "sembol": sem, "adet": adet, "giris": round(giris, 4),
+            "fiyat": round(fiyat, 4),
+            "tarih": b.tarih if b else tarih,
+            "maliyet": round(d_maliyet, 2), "deger": round(d_piyasa, 2),
+            "kar": round(d_piyasa - d_maliyet, 2),
+            "kar_yuzde": round((fiyat / giris - 1) * 100, 2) if giris else 0.0,
+            "stop": stop, "hedef": hedef,
+            # "stopa %2 kaldı" uyarısı bu iki sayıdan çıkıyor.
+            "stop_uzaklik": round((fiyat - stop) / fiyat * 100, 2)
+                            if fiyat > 0 and stop > 0 else None,
+            "hedef_uzaklik": round((hedef - fiyat) / fiyat * 100, 2)
+                             if fiyat > 0 and hedef > 0 else None,
+            "veri_var": b is not None,
+        })
+    ozkaynak = nakit + piyasa
+    return {"tarih": tarih, "nakit": round(nakit, 2),
+            "piyasa": round(piyasa, 2), "maliyet": round(maliyet, 2),
+            "ozkaynak": round(ozkaynak, 2),
+            "acik_kar": round(piyasa - maliyet, 2),
+            "acik_kar_yuzde": round((piyasa / maliyet - 1) * 100, 2)
+                              if maliyet > 0 else 0.0,
+            "satirlar": satirlar}
+
+
+# ── işlem ──────────────────────────────────────────────────────────────────
+
+def al_kontrol(bar: Bar, adet: int, nakit: float,
+               kayma_bp: float = KAYMA_BP) -> dict:
+    """Alım gerçekleşir mi, hangi fiyattan.
+
+    TAVAN KURALI BURADA UYGULANIYOR. Eskiden yalnızca `Bar.tavan_mi`
+    bayrağı dönüyordu ve telefon onu sadece uyarı olarak gösteriyordu —
+    yani kullanıcı tavanda açan hisseyi alabiliyordu. Backtest bunu
+    engelliyor; simülatör engellemezse ikisi farklı sonuç üretir.
+    """
+    if bar is None:
+        return {"gecti": False, "sebep": "O tarihte veri yok."}
+    if adet < 1:
+        return {"gecti": False, "sebep": "Adet en az 1 olmalı."}
+    if bar.tavan_mi:
+        return {"gecti": False,
+                "sebep": (f"{bar.tarih}: tavana yakın açtı "
+                          f"({bar.onceki_kapanis:.2f} → {bar.acilis:.2f} ₺). "
+                          "Tavanda satıcı yoktur — emir gerçekleşmez.")}
+    fiyat = bar.kapanis * (1 + kayma_bp / 10_000.0)
+    fiyat = _risk_yuvarla(fiyat, yukari=True)
+    maliyet = adet * fiyat
+    if maliyet > nakit + 1e-9:
+        return {"gecti": False, "fiyat": round(fiyat, 4),
+                "maliyet": round(maliyet, 2),
+                "sebep": (f"Bakiye yetmiyor: {maliyet:,.2f} ₺ gerekiyor, "
+                          f"{nakit:,.2f} ₺ var.")}
+    return {"gecti": True, "fiyat": round(fiyat, 4),
+            "ham_fiyat": round(bar.kapanis, 4),
+            "kayma": round(fiyat - bar.kapanis, 4),
+            "maliyet": round(maliyet, 2), "tarih": bar.tarih, "sebep": ""}
+
+
+def sat(pozisyon: dict, bar: Bar, adet: int = 0,
+        kayma_bp: float = KAYMA_BP) -> dict:
+    """Elle satış. `adet=0` → tamamı. Kısmi satış destekli."""
+    if bar is None:
+        return {"gecti": False, "sebep": "O tarihte veri yok."}
+    acik = int(pozisyon.get("adet") or 0)
+    if acik < 1:
+        return {"gecti": False, "sebep": "Açık pozisyon yok."}
+    n = acik if adet <= 0 else min(adet, acik)
+    fiyat = bar.kapanis * (1 - kayma_bp / 10_000.0)
+    fiyat = _risk_yuvarla(fiyat, yukari=False)
+    return {"gecti": True, "sembol": pozisyon.get("sembol", ""),
+            "adet": n, "fiyat": round(fiyat, 4),
+            "ham_fiyat": round(bar.kapanis, 4),
+            "kayma": round(bar.kapanis - fiyat, 4),
+            "hasilat": round(n * fiyat, 2), "kalan_adet": acik - n,
+            "tarih": bar.tarih, "sebep": "elle"}
+
+
+def _risk_yuvarla(fiyat: float, yukari: bool) -> float:
+    """BIST fiyat kademesine yuvarla. risk.py yoksa ham fiyat."""
+    try:
+        from .risk import kademeye_yuvarla
+        return kademeye_yuvarla(fiyat, yukari=yukari)
+    except Exception:
+        return round(fiyat, 2)
+
+
+# ── motor ──────────────────────────────────────────────────────────────────
+
+def adim(pozisyonlar: list[dict], nakit: float, tarih: str,
+         adim_sayisi: int = 1, izlenen: list[str] | None = None,
+         kayma_bp: float = KAYMA_BP,
+         azami_adim: int = 260) -> dict:
+    """`adim_sayisi` işlem günü ilerletir.
+
+    Her gün SIRAYLA (backtest.py:110-211 ile aynı sıra):
+      1) boşluklu açılışta stop/hedef  2) gün içi stop, hedeften ÖNCE
+      3) kapanışta değerleme → özkaynak noktası
+
+    `adim_sayisi <= 0` → pozisyonların hepsi kapanana kadar (azami
+    `azami_adim` gün). Kullanıcı "kapanana kadar" düğmesine bastığında
+    bu çalışıyor; pozisyon yoksa tek gün ilerliyor.
+
+    Pozisyon olmadan da ilerler: takvim referans sembolden okunuyor.
+    Eskiden sembol listesi boşsa uç 400 dönüyordu ve kullanıcı tarih
+    seçip "yarına bakayım" dediğinde hata alıyordu.
+    """
+    poz = [dict(p) for p in (pozisyonlar or [])]
+    semboller = sorted({p.get("sembol", "") for p in poz if p.get("sembol")}
+                       | set(izlenen or []))
+    kapanana_kadar = adim_sayisi <= 0
+    kalan = azami_adim if kapanana_kadar else min(int(adim_sayisi), azami_adim)
+
+    gunler = takvim(tarih)
+    # `takvim` başlangıcı DAHİL veriyor; ilerleme sonrakinden başlıyor.
+    ileri = [g for g in gunler if g > tarih][:kalan]
+    if not ileri:
+        return {"tarih": tarih, "gunler": [], "cikislar": [],
+                "pozisyonlar": poz, "nakit": round(nakit, 2),
+                "ozkaynak_noktalari": [], "fiyatlar": {},
+                "bitti": True,
+                "sebep": "Veri burada bitiyor — daha ileri gidilemiyor."}
+
+    cikislar: list[dict] = []
+    noktalar: list[dict] = []
+    fiyatlar: dict[str, dict] = {}
+    islenen: list[str] = []
+
+    for g in ileri:
+        islenen.append(g)
+        kalanlar = []
+        for p in poz:
+            b = gun(p.get("sembol", ""), g)
+            if b is None:
+                kalanlar.append(p)
+                continue
+            fiyatlar[p["sembol"]] = b.sozluk()
+            c = cikis_kontrol(p, b)
+            if c is None:
+                kalanlar.append(p)
+                continue
+            # Çıkışta kayma AŞAĞI: backtest de öyle (backtest.py:192-195).
+            cikis_fiyat = _risk_yuvarla(
+                c.fiyat * (1 - kayma_bp / 10_000.0), yukari=False)
+            nakit += p["adet"] * cikis_fiyat
+            cikislar.append({"sembol": c.sembol, "adet": p["adet"],
+                             "fiyat": round(cikis_fiyat, 4),
+                             "ham_fiyat": round(c.fiyat, 4),
+                             "sebep": c.sebep, "tarih": c.tarih,
+                             "giris": p.get("giris"),
+                             "giris_tarih": p.get("tarih")})
+        poz = kalanlar
+        d = deger(poz, nakit, g)
+        noktalar.append({"t": g, "d": d["ozkaynak"]})
+        # Ayrıca fiyat sözlüğünü kalan pozisyonlar için tazele
+        for s in d["satirlar"]:
+            if s["veri_var"] and s["sembol"] not in fiyatlar:
+                b2 = gun(s["sembol"], g)
+                if b2:
+                    fiyatlar[s["sembol"]] = b2.sozluk()
+        if kapanana_kadar and not poz:
+            break
+
+    son_tarih = islenen[-1] if islenen else tarih
+    son_deger = deger(poz, nakit, son_tarih)
+    return {"tarih": son_tarih, "gunler": islenen, "cikislar": cikislar,
+            "pozisyonlar": poz, "nakit": round(nakit, 2),
+            "ozkaynak_noktalari": noktalar, "fiyatlar": fiyatlar,
+            "deger": son_deger, "bitti": False, "sebep": ""}
