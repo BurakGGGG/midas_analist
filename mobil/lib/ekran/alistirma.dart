@@ -10,13 +10,13 @@ import 'ders.dart';
 /// Alıştırma kum havuzu ekranı.
 ///
 /// Üç hâli var ve sırayla açılıyor:
-///   1. Mod seçimi   — geçmiş mi, canlı mı
+///   1. Başlangıç  — iki soru: yardım ister misin, hangi zamanda
 ///   2. Rehberli görevler — sırayla, her biri bir dersi uygulatıyor
-///   3. Serbest mod  — görevler bitince açılan sanal işlem defteri
+///   3. Serbest mod — görevler bitince (ya da baştan seçilince) sanal defter
 ///
-/// Görev kartı listenin ÜSTÜNDE duruyor: sıradaki adım her zaman ilk
-/// görülen şey olmalı, yoksa kullanıcı serbest moda kayıp öğrenmeden
-/// işlem yapmaya başlar.
+/// GÖREV KARTI EN ÜSTTE: sıradaki adım her zaman ilk görülen şey olmalı.
+/// Önceki halinde bakiye özeti üstteydi ve görev ekranın altında kalıyordu;
+/// telefonda görevi görmek için kaydırmak gerekiyordu.
 class AlistirmaEkran extends StatefulWidget {
   const AlistirmaEkran({super.key});
   @override
@@ -43,13 +43,18 @@ class _AlistirmaDurum extends State<AlistirmaEkran> {
     }
   }
 
+  /// Sıradaki görev. Serbest modda hep null — görev akışı kapalı.
   Map<String, dynamic>? get _siradaki {
+    if (!kum.rehberli) return null;
     for (final g in _gorevler) {
       final m = Map<String, dynamic>.from(g as Map);
       if (!kum.bitenGorevler.contains('${m['kod']}')) return m;
     }
     return null;
   }
+
+  bool get _hepsiBitti =>
+      _gorevler.isNotEmpty && kum.bitenGorevler.length >= _gorevler.length;
 
   Future<void> _calistir(Future<void> Function() is_) async {
     setState(() => _mesgul = true);
@@ -86,7 +91,9 @@ class _AlistirmaDurum extends State<AlistirmaEkran> {
         builder: (_, __) => _hata != null && _gorevler.isEmpty
             ? HataGorunum(_hata!, tekrar: _getir)
             : !kum.basladi
-                ? _ModSecimi(baslat: (m, t) => _calistir(() => kum.basla(m, t)))
+                ? _Baslangic(
+                    baslat: (mod, tarih, rehber) =>
+                        _calistir(() => kum.basla(mod, tarih, rehber)))
                 : _kumHavuzu(c),
       ),
     );
@@ -97,37 +104,94 @@ class _AlistirmaDurum extends State<AlistirmaEkran> {
   Widget _kumHavuzu(BuildContext c) {
     final sem = Sem(c);
     final g = _siradaki;
+
     return ListView(
       padding: const EdgeInsets.only(top: 12, bottom: 28),
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _ozet(c, sem),
-        ),
+        if (kum.rehberli) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _IlerlemeSeridi(
+                biten: kum.bitenGorevler.length,
+                toplam: _gorevler.isEmpty ? 8 : _gorevler.length,
+                puan: kum.puan,
+                // Görevler bitince rozetler kutlama kartında ZATEN var
+                // (kazanılmayanlarla birlikte). İki yerde göstermek
+                // ekranı uzatıyor ve ikisinden hangisinin tam liste
+                // olduğunu belirsizleştiriyordu.
+                rozetler: _hepsiBitti ? const [] : kum.rozetler),
+          ),
+          const SizedBox(height: 4),
+        ],
+
         if (g != null) ...[
           const Baslik('Sıradaki görev'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _GorevKarti(
+              // ANAHTAR ŞART. Bu olmadan Flutter görev değişince aynı
+              // State nesnesini yeniden kullanıyordu: bir önceki görevin
+              // "doğru bildin" durumu kalıyor, cevap kutusu kapalı
+              // geliyor ve yeşil kutuda ÖNCEKİ görevin açıklaması
+              // duruyordu. Tek satırlık eksik, üç ayrı belirti.
+              key: ValueKey('${g['kod']}'),
               gorev: g,
               sira: kum.bitenGorevler.length + 1,
               toplam: _gorevler.length,
-              bitir: () => _calistir(() => kum.gorevBitir('${g['kod']}')),
+              denemeKaydet: () => kum.denemeEkle('${g['kod']}'),
+              // Uygulamalı görevlerde "yaptım" iddiası değil, KANIT
+              // aranıyor: alım görevinde açık ya da kapanmış bir pozisyon,
+              // ilerletme görevinde kapanmış bir işlem. Kanıtsız
+              // geçilebilseydi rozet hiçbir şey ifade etmezdi.
+              isKaniti: '${g['tur']}' == 'islem'
+                  ? kum.pozisyonlar.isNotEmpty || kum.kapali.isNotEmpty
+                  : '${g['tur']}' == 'ilerlet'
+                      ? kum.kapali.isNotEmpty
+                      : true,
+              bitir: () => _calistir(() =>
+                  kum.gorevBitir('${g['kod']}', toplamGorev: _gorevler.length)),
               alimIste: _alimSayfasi,
               ilerletIste: _ilerlet,
             ),
           ),
-        ] else ...[
-          const Baslik('Serbest mod'),
+        ] else if (kum.rehberli && _hepsiBitti) ...[
+          const Baslik('Sonuç', alt: 'rehberli mod tamamlandı'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Not(
-              'Görevlerin bitti. Artık istediğin gibi dene — sanal para, '
-              'gerçek fiyat, gerçek kurallar.',
-              ikon: Icons.check_circle_outline_sharp, renk: sem.arti,
+            child: _Kutlama(
+                puan: kum.puan,
+                azami: (_gorevler.isEmpty ? 8 : _gorevler.length) * 10,
+                rozetler: kum.rozetler),
+          ),
+        ] else if (!kum.rehberli) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Kutu(
+              child: Row(children: [
+                Icon(Icons.explore_off_sharp, size: 18, color: Renk.metinSolgun),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text('Kendi başına moddasın. Takılırsan rehberi '
+                      'açabilirsin — ilerlemen kaybolmaz.',
+                      style: Theme.of(c).textTheme.bodySmall),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: _mesgul
+                      ? null
+                      : () => _calistir(() => kum.rehberDegistir('rehberli')),
+                  child: const Text('AÇ'),
+                ),
+              ]),
             ),
           ),
         ],
+
+        const Baslik('Sanal hesabın'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _ozet(c, sem),
+        ),
 
         const Baslik('Açık pozisyonlar'),
         if (kum.pozisyonlar.isEmpty)
@@ -260,6 +324,8 @@ class _AlistirmaDurum extends State<AlistirmaEkran> {
 
   Future<void> _ilerlet() => _calistir(() async {
         final r = await kum.ilerlet();
+        await kum.islemRozetleri(
+            toplamGorev: _gorevler.isEmpty ? 8 : _gorevler.length);
         final c = (r['cikislar'] ?? []) as List;
         if (!mounted) return;
         if (c.isEmpty) {
@@ -273,7 +339,11 @@ class _AlistirmaDurum extends State<AlistirmaEkran> {
   Future<void> _alimSayfasi() async {
     final ok = await Navigator.push<bool>(
         context, MaterialPageRoute(builder: (_) => const KumAlimEkran()));
-    if (ok == true && mounted) setState(() {});
+    if (ok == true && mounted) {
+      await kum.islemRozetleri(
+          toplamGorev: _gorevler.isEmpty ? 8 : _gorevler.length);
+      if (mounted) setState(() {});
+    }
   }
 
   Future<void> _sifirlaSor() async {
@@ -284,8 +354,8 @@ class _AlistirmaDurum extends State<AlistirmaEkran> {
         shape: const RoundedRectangleBorder(borderRadius: kose),
         title: const Text('Alıştırmayı sıfırla'),
         content: const Text(
-            'Sanal bakiye, pozisyonlar, kapanan işlemler ve görev '
-            'ilerlemen silinecek.\n\n'
+            'Sanal bakiye, pozisyonlar, kapanan işlemler, puanın, '
+            'rozetlerin ve görev ilerlemen silinecek.\n\n'
             'Gerçek portföyün ve karar defterin etkilenmez.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d, false),
@@ -299,78 +369,308 @@ class _AlistirmaDurum extends State<AlistirmaEkran> {
   }
 }
 
-// ── mod seçimi ─────────────────────────────────────────────────────────────
+// ── rozetler ───────────────────────────────────────────────────────────────
 
-class _ModSecimi extends StatelessWidget {
-  final void Function(String mod, String tarih) baslat;
-  const _ModSecimi({required this.baslat});
+/// Rozet tanımları tek yerde: ad, ikon ve KAZANMA SEBEBİ.
+///
+/// `ilk_stop` bilerek burada: stop yemek bir başarısızlık değil, sistemin
+/// çalıştığının kanıtı. Ödüllendirilmezse kullanıcı stopu "kaybettiğim
+/// yer" diye öğrenir ve bir dahakine koymaz.
+const rozetTanim = <String, (IconData, String, String)>{
+  'ilk_adim': (Icons.flag_sharp, 'İlk adım', 'İlk görevi bitirdin'),
+  'yarim_yol': (Icons.timeline_sharp, 'Yarı yol', 'Görevlerin yarısı bitti'),
+  'mezun': (Icons.school_sharp, 'Mezun', 'Bütün görevleri bitirdin'),
+  'kusursuz': (Icons.auto_awesome_sharp, 'Kusursuz',
+      'Her görevi ilk denemede bildin'),
+  'ilk_islem': (Icons.candlestick_chart_sharp, 'İlk işlem',
+      'İlk sanal işlemini kapattın'),
+  'ilk_kar': (Icons.trending_up_sharp, 'İlk kâr', 'Kârla kapanan bir işlem'),
+  'ilk_stop': (Icons.shield_sharp, 'Stop çalıştı',
+      'Bir stop seni korudu — bu da öğrenmek'),
+};
+
+class _RozetPulu extends StatelessWidget {
+  final String kod;
+  final bool kazanildi;
+  const _RozetPulu(this.kod, {this.kazanildi = true});
+
+  @override
+  Widget build(BuildContext c) {
+    final t = rozetTanim[kod];
+    if (t == null) return const SizedBox.shrink();
+    final renk = kazanildi ? Sem(c).aksan : Renk.cizgiParlak;
+    return Tooltip(
+      message: t.$3,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          border: Border.all(color: renk, width: 1.2),
+          color: kazanildi ? renk.withValues(alpha: 0.10) : Colors.transparent,
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(t.$1, size: 13, color: renk),
+          const SizedBox(width: 6),
+          Text(t.$2,
+              style: TextStyle(
+                  fontSize: 11, color: renk, fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── ilerleme şeridi ────────────────────────────────────────────────────────
+
+class _IlerlemeSeridi extends StatelessWidget {
+  final int biten, toplam, puan;
+  final List<String> rozetler;
+  const _IlerlemeSeridi({
+    required this.biten, required this.toplam,
+    required this.puan, required this.rozetler,
+  });
 
   @override
   Widget build(BuildContext c) {
     final sem = Sem(c);
-    final bugun = DateTime.now();
-    String iso(DateTime d) =>
-        '${d.year}-${d.month.toString().padLeft(2, '0')}-'
-        '${d.day.toString().padLeft(2, '0')}';
+    return Kutu(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text('İLERLEME',
+                style: Theme.of(c).textTheme.labelSmall
+                    ?.copyWith(color: sem.aksan, letterSpacing: 1.3)),
+            const Spacer(),
+            Text('$puan',
+                style: Theme.of(c).textTheme.titleMedium
+                    ?.copyWith(color: sem.aksan)),
+            Text(' / ${toplam * 10} puan',
+                style: Theme.of(c).textTheme.bodySmall),
+          ]),
+          const SizedBox(height: 10),
+          // Kutucuklu çubuk: sürekli bir çizgi yerine görev sayısı kadar
+          // kutu. "Kaç tane kaldı" sayılabilir olsun — yüzde soyut,
+          // "8'de 3" somut.
+          Row(
+            children: List.generate(toplam, (i) {
+              return Expanded(
+                child: Container(
+                  height: 8,
+                  margin: EdgeInsets.only(right: i == toplam - 1 ? 0 : 3),
+                  color: i < biten ? sem.aksan : Renk.cizgi,
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          Text('$biten / $toplam görev',
+              style: Theme.of(c).textTheme.bodySmall),
+          if (rozetler.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6, runSpacing: 6,
+              children: rozetler.map((r) => _RozetPulu(r)).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── kutlama ────────────────────────────────────────────────────────────────
+
+class _Kutlama extends StatelessWidget {
+  final int puan, azami;
+  final List<String> rozetler;
+  const _Kutlama({
+    required this.puan, required this.azami, required this.rozetler,
+  });
+
+  @override
+  Widget build(BuildContext c) {
+    final sem = Sem(c);
+    // Puana göre değişen tek cümle. Sabit bir "tebrikler" hiçbir şey
+    // söylemiyor; kaç denemede bitirdiğini yansıtan cümle söylüyor.
+    final yorum = azami > 0 && puan >= azami
+        ? 'Hepsini ilk denemede bildin. Bu nadir.'
+        : puan >= azami * 0.75
+            ? 'Sağlam. Birkaç yerde ikinci denemeye kaldın, o da normal.'
+            : 'Bitirdin. Zorlandığın yerleri sıfırlayıp tekrar edebilirsin.';
+
+    return Kutu(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.emoji_events_sharp, size: 22, color: sem.aksan),
+            const SizedBox(width: 10),
+            Text('Görevler bitti',
+                style: Theme.of(c).textTheme.titleMedium
+                    ?.copyWith(color: sem.aksan)),
+          ]),
+          const SizedBox(height: 10),
+          Text('$puan / $azami puan',
+              style: Theme.of(c).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(yorum,
+              style: Theme.of(c).textTheme.bodyMedium?.copyWith(height: 1.55)),
+          const SizedBox(height: 14),
+          Text('ROZETLER',
+              style: Theme.of(c).textTheme.labelSmall
+                  ?.copyWith(color: sem.aksan, letterSpacing: 1.3)),
+          const SizedBox(height: 9),
+          // Kazanılmayanlar da SOLGUN gösteriliyor: neyin kaldığını
+          // görmeden peşine düşülmez.
+          Wrap(
+            spacing: 6, runSpacing: 6,
+            children: rozetTanim.keys
+                .map((k) => _RozetPulu(k, kazanildi: rozetler.contains(k)))
+                .toList(),
+          ),
+          const SizedBox(height: 14),
+          Text('Artık serbestsin: sanal para, gerçek fiyat, gerçek kurallar. '
+              'Aşağıdan istediğin gibi dene.',
+              style: Theme.of(c).textTheme.bodySmall?.copyWith(height: 1.55)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── başlangıç: iki soru ────────────────────────────────────────────────────
+
+/// İki ayrı soru, iki ayrı adım.
+///
+/// Tek ekranda dört kutucuk (rehberli-geçmiş, rehberli-canlı, serbest-geçmiş,
+/// serbest-canlı) gösterilebilirdi ama o dört seçenek arasında karar
+/// verilemez. İki soruyu ayırmak, her birini tek başına cevaplanabilir
+/// hale getiriyor.
+class _Baslangic extends StatefulWidget {
+  final void Function(String mod, String tarih, String rehber) baslat;
+  const _Baslangic({required this.baslat});
+
+  @override
+  State<_Baslangic> createState() => _BaslangicDurum();
+}
+
+class _BaslangicDurum extends State<_Baslangic> {
+  String? _rehber;
+
+  String _iso(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext c) {
+    final sem = Sem(c);
+    final adim = _rehber == null ? 1 : 2;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
       children: [
         Not(
           'Sanal 10.000 ₺ ile işlem yapacaksın. Gerçek portföyüne, karar '
-          'defterine ve sicilinize hiç dokunmaz — istediğin zaman sıfırlarsın.',
+          'defterine ve siciline hiç dokunmaz — istediğin zaman sıfırlarsın.',
           ikon: Icons.science_sharp, renk: sem.aksan,
         ),
-        const SizedBox(height: 16),
-        Text('Nasıl çalışsın?', style: Theme.of(c).textTheme.titleMedium),
-        const SizedBox(height: 12),
+        const SizedBox(height: 18),
 
-        Kutu(
-          tikla: () => baslat('gecmis',
-              iso(bugun.subtract(const Duration(days: 120)))),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Icon(Icons.fast_forward_sharp, size: 19, color: sem.aksan),
-                const SizedBox(width: 10),
-                Text('Geçmiş modu',
-                    style: Theme.of(c).textTheme.titleMedium
-                        ?.copyWith(color: sem.aksan)),
-              ]),
-              const SizedBox(height: 8),
-              Text(
-                  '4 ay öncesine gidersin, alım yaparsın, "sonraki gün" '
-                  'düğmesiyle ilerlersin. 20 günlük sonucu 20 saniyede '
-                  'görürsün.\n\nÖğrenmek için en hızlı yol.',
-                  style: Theme.of(c).textTheme.bodyMedium
-                      ?.copyWith(height: 1.55)),
-            ],
-          ),
-        ),
+        Row(children: [
+          Text('ADIM $adim / 2',
+              style: Theme.of(c).textTheme.labelSmall
+                  ?.copyWith(color: sem.aksan, letterSpacing: 1.3)),
+          const Spacer(),
+          if (adim == 2)
+            TextButton(
+              onPressed: () => setState(() => _rehber = null),
+              child: const Text('GERİ'),
+            ),
+        ]),
         const SizedBox(height: 10),
 
-        Kutu(
-          tikla: () => baslat('canli', iso(bugun)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                const Icon(Icons.today_sharp, size: 19),
-                const SizedBox(width: 10),
-                Text('Canlı mod', style: Theme.of(c).textTheme.titleMedium),
-              ]),
-              const SizedBox(height: 8),
-              Text(
-                  'Bugünün gerçek fiyatlarından alırsın, sonucu gerçek '
+        if (adim == 1) ...[
+          Text('Yardım ister misin?',
+              style: Theme.of(c).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text('İstediğin zaman değiştirebilirsin.',
+              style: Theme.of(c).textTheme.bodySmall),
+          const SizedBox(height: 14),
+          _secenek(c, sem,
+              ikon: Icons.handshake_sharp,
+              baslik: 'Elimden tut',
+              vurgu: true,
+              rozet: 'ÖNERİLEN',
+              metin: '8 kısa görev, sırayla. Her biri tek bir şey öğretiyor: '
+                  'tutar, stop, hedef, adet, sonra gerçek bir sanal alım.\n\n'
+                  'Puan toplarsın, rozet kazanırsın. Yanlış cevap bir şey '
+                  'kaybettirmez — sadece ipucu getirir.',
+              sec: () => setState(() => _rehber = 'rehberli')),
+          const SizedBox(height: 10),
+          _secenek(c, sem,
+              ikon: Icons.explore_sharp,
+              baslik: 'Kendi başıma',
+              metin: 'Görevleri atla, doğrudan sanal işleme başla. '
+                  'Hisseyi sen seçersin, stopu sen koyarsın.\n\n'
+                  'Takılırsan rehberi sonradan açabilirsin.',
+              sec: () => setState(() => _rehber = 'serbest')),
+        ] else ...[
+          Text('Hangi zamanda?', style: Theme.of(c).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text('Sonucu ne kadar hızlı göreceğini bu belirliyor.',
+              style: Theme.of(c).textTheme.bodySmall),
+          const SizedBox(height: 14),
+          _secenek(c, sem,
+              ikon: Icons.fast_forward_sharp,
+              baslik: 'Geçmiş',
+              vurgu: true,
+              rozet: 'HIZLI',
+              metin: '4 ay öncesine gidersin, alım yaparsın, "sonraki gün" '
+                  'düğmesiyle ilerlersin. 20 günlük sonucu 20 saniyede '
+                  'görürsün.\n\nÖğrenmek için en hızlı yol.',
+              sec: () => widget.baslat('gecmis',
+                  _iso(DateTime.now().subtract(const Duration(days: 120))),
+                  _rehber!)),
+          const SizedBox(height: 10),
+          _secenek(c, sem,
+              ikon: Icons.today_sharp,
+              baslik: 'Canlı',
+              metin: 'Bugünün gerçek fiyatlarından alırsın, sonucu gerçek '
                   'günlerde görürsün.\n\nDaha gerçekçi ama yavaş: bir stopun '
                   'çalıştığını görmen haftalar alabilir.',
-                  style: Theme.of(c).textTheme.bodyMedium
-                      ?.copyWith(height: 1.55)),
-            ],
-          ),
-        ),
+              sec: () =>
+                  widget.baslat('canli', _iso(DateTime.now()), _rehber!)),
+        ],
       ],
+    );
+  }
+
+  Widget _secenek(BuildContext c, Sem sem,
+      {required IconData ikon,
+      required String baslik,
+      required String metin,
+      required VoidCallback sec,
+      bool vurgu = false,
+      String? rozet}) {
+    return Kutu(
+      tikla: sec,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(ikon, size: 19, color: vurgu ? sem.aksan : null),
+            const SizedBox(width: 10),
+            Text(baslik,
+                style: Theme.of(c).textTheme.titleMedium
+                    ?.copyWith(color: vurgu ? sem.aksan : null)),
+            const Spacer(),
+            if (rozet != null) Rozet(rozet, renk: sem.aksan),
+          ]),
+          const SizedBox(height: 8),
+          Text(metin,
+              style: Theme.of(c).textTheme.bodyMedium?.copyWith(height: 1.55)),
+        ],
+      ),
     );
   }
 }
@@ -380,12 +680,16 @@ class _ModSecimi extends StatelessWidget {
 class _GorevKarti extends StatefulWidget {
   final Map<String, dynamic> gorev;
   final int sira, toplam;
+  final Future<int> Function() denemeKaydet;
+  final bool isKaniti;
   final VoidCallback bitir;
   final VoidCallback alimIste;
   final VoidCallback ilerletIste;
 
   const _GorevKarti({
+    super.key,
     required this.gorev, required this.sira, required this.toplam,
+    required this.denemeKaydet, required this.isKaniti,
     required this.bitir, required this.alimIste, required this.ilerletIste,
   });
 
@@ -397,6 +701,9 @@ class _GorevKartiDurum extends State<_GorevKarti> {
   final _cevap = TextEditingController();
   int? _secim;
   bool _dogruMu = false;
+  bool _ipucuAcik = false;
+  bool _anlatimAcik = true;
+  int _deneme = 0;
   String? _geriBildirim;
 
   @override
@@ -405,7 +712,7 @@ class _GorevKartiDurum extends State<_GorevKarti> {
     super.dispose();
   }
 
-  void _kontrol() {
+  Future<void> _kontrol() async {
     final g = widget.gorev;
     final tur = '${g['tur']}';
     bool dogru = false;
@@ -419,11 +726,18 @@ class _GorevKartiDurum extends State<_GorevKarti> {
       dogru = v != null && (v - beklenen).abs() <= tol;
     }
 
+    final n = await widget.denemeKaydet();
+    if (!mounted) return;
     setState(() {
+      _deneme = n;
       _dogruMu = dogru;
       _geriBildirim = dogru
           ? '${g['aciklama']}'
           : 'Henüz değil. ${g['ipucu'] ?? ''}'.trim();
+      // Doğru cevapta anlatımı topla: ekranda yer açılsın, açıklama ve
+      // sonraki adım aynı anda görünsün.
+      if (dogru) _anlatimAcik = false;
+      if (!dogru) _ipucuAcik = true;
     });
   }
 
@@ -433,15 +747,27 @@ class _GorevKartiDurum extends State<_GorevKarti> {
     final g = widget.gorev;
     final tur = '${g['tur']}';
     final ders = '${g['ders'] ?? ''}';
+    final amac = '${g['amac'] ?? ''}';
+    final ipucu = '${g['ipucu'] ?? ''}';
+    final soru = '${g['soru'] ?? ''}';
+    final cevaplanabilir = tur == 'secim' || tur == 'sayi';
 
     return Kutu(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── üst şerit
           Row(children: [
-            Text('GÖREV ${widget.sira}/${widget.toplam}',
-                style: Theme.of(c).textTheme.labelSmall
-                    ?.copyWith(color: sem.aksan, letterSpacing: 1.2)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              color: sem.aksan.withValues(alpha: 0.14),
+              child: Text('GÖREV ${widget.sira}/${widget.toplam}',
+                  style: Theme.of(c).textTheme.labelSmall
+                      ?.copyWith(color: sem.aksan, letterSpacing: 1.2)),
+            ),
+            const SizedBox(width: 8),
+            if (_dogruMu)
+              Rozet('+${KumHavuzu.puanHesapla(_deneme)} PUAN', renk: sem.arti),
             const Spacer(),
             if (ders.startsWith('d'))
               InkWell(
@@ -455,18 +781,66 @@ class _GorevKartiDurum extends State<_GorevKarti> {
                 ]),
               ),
           ]),
-          const SizedBox(height: 8),
-          Text('${g['baslik']}', style: Theme.of(c).textTheme.titleMedium),
           const SizedBox(height: 10),
-          Text('${g['anlatim']}',
-              style: Theme.of(c).textTheme.bodyMedium?.copyWith(height: 1.6)),
+          Text('${g['baslik']}', style: Theme.of(c).textTheme.titleMedium),
 
-          if ('${g['soru'] ?? ''}'.isNotEmpty) ...[
+          // "Bitirince ne bileceksin" — görev tanımında hep vardı ama
+          // ekranda hiç gösterilmiyordu. Bir göreve başlamadan önce
+          // sorulacak ilk soru bu.
+          if (amac.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text('Bitirince: $amac',
+                style: Theme.of(c).textTheme.bodySmall
+                    ?.copyWith(color: sem.aksan, height: 1.4)),
+          ],
+
+          // ── anlatım (katlanabilir)
+          // Anlatım uzun; açık kaldığında soru telefon ekranının altına
+          // düşüyordu ve kullanıcı soruyu görmek için kaydırmak zorundaydı.
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: () => setState(() => _anlatimAcik = !_anlatimAcik),
+            child: Row(children: [
+              Icon(_anlatimAcik
+                      ? Icons.keyboard_arrow_down_sharp
+                      : Icons.keyboard_arrow_right_sharp,
+                  size: 17, color: Renk.metinSolgun),
+              const SizedBox(width: 4),
+              Text('ÖNCE ŞUNU BİL',
+                  style: Theme.of(c).textTheme.labelSmall
+                      ?.copyWith(letterSpacing: 1.2)),
+            ]),
+          ),
+          if (_anlatimAcik) ...[
+            const SizedBox(height: 8),
+            Text('${g['anlatim']}',
+                style: Theme.of(c).textTheme.bodyMedium?.copyWith(height: 1.6)),
+          ],
+
+          // ── soru
+          if (soru.isNotEmpty) ...[
             const SizedBox(height: 14),
-            Container(height: 1, color: Renk.cizgi),
-            const SizedBox(height: 14),
-            Text('${g['soru']}',
-                style: Theme.of(c).textTheme.bodyLarge?.copyWith(height: 1.5)),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: Renk.panelUst,
+                border: Border(
+                    left: BorderSide(color: sem.aksan, width: 3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('SORU',
+                      style: Theme.of(c).textTheme.labelSmall
+                          ?.copyWith(color: sem.aksan, letterSpacing: 1.3)),
+                  const SizedBox(height: 7),
+                  Text(soru,
+                      style: Theme.of(c).textTheme.bodyLarge
+                          ?.copyWith(height: 1.5)),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
           ],
 
@@ -509,12 +883,47 @@ class _GorevKartiDurum extends State<_GorevKarti> {
             TextField(
               controller: _cevap,
               enabled: !_dogruMu,
+              autofocus: false,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _dogruMu ? null : _kontrol(),
               decoration: InputDecoration(
                   labelText: 'Cevabın',
+                  hintText: '0,00',
                   suffixText: '${g['birim'] ?? ''}'),
             ),
 
+          // ── ipucu (istenince)
+          // Önceden ipucu YALNIZCA yanlış cevaptan sonra görünüyordu.
+          // Tıkanan biri o yüzden rastgele bir sayı yazıp "yanlış" almak
+          // zorunda kalıyordu. Artık isteyen önce bakabiliyor.
+          if (cevaplanabilir && ipucu.isNotEmpty && !_dogruMu) ...[
+            const SizedBox(height: 6),
+            if (!_ipucuAcik)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _ipucuAcik = true),
+                  icon: const Icon(Icons.lightbulb_outline_sharp, size: 16),
+                  label: const Text('İPUCU'),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  Icon(Icons.lightbulb_sharp, size: 15, color: sem.uyari),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(ipucu,
+                        style: Theme.of(c).textTheme.bodySmall
+                            ?.copyWith(color: sem.uyari)),
+                  ),
+                ]),
+              ),
+          ],
+
+          // ── geri bildirim
           if (_geriBildirim != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -526,8 +935,33 @@ class _GorevKartiDurum extends State<_GorevKarti> {
                     color: (_dogruMu ? sem.arti : sem.uyari)
                         .withValues(alpha: 0.35)),
               ),
-              child: Text(_geriBildirim!,
-                  style: Theme.of(c).textTheme.bodySmall?.copyWith(height: 1.6)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(_dogruMu
+                            ? Icons.check_circle_sharp
+                            : Icons.refresh_sharp,
+                        size: 16, color: _dogruMu ? sem.arti : sem.uyari),
+                    const SizedBox(width: 7),
+                    Text(
+                        _dogruMu
+                            ? (_deneme <= 1
+                                ? 'DOĞRU — ilk denemede'
+                                : 'DOĞRU — $_deneme. denemede')
+                            : 'BİR DAHA DENE',
+                        style: TextStyle(
+                            color: _dogruMu ? sem.arti : sem.uyari,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            letterSpacing: 0.8)),
+                  ]),
+                  const SizedBox(height: 9),
+                  Text(_geriBildirim!,
+                      style: Theme.of(c).textTheme.bodySmall
+                          ?.copyWith(height: 1.6)),
+                ],
+              ),
             ),
           ],
 
@@ -551,11 +985,30 @@ class _GorevKartiDurum extends State<_GorevKarti> {
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
-                onPressed: widget.bitir,
-                child: const Text('SONRAKİ GÖREV'),
+              child: FilledButton.icon(
+                onPressed: widget.isKaniti ? widget.bitir : null,
+                icon: const Icon(Icons.arrow_forward_sharp, size: 18),
+                label: Text(!widget.isKaniti
+                    ? (tur == 'islem'
+                        ? 'ÖNCE BİR ALIM YAP'
+                        : 'ÖNCE POZİSYON KAPANSIN')
+                    : widget.sira >= widget.toplam
+                        ? 'GÖREVLERİ BİTİR'
+                        : 'SONRAKİ GÖREV'),
               ),
             ),
+            // Kapı YUMUŞAK: kanıt istiyoruz ama kimseyi kilitlemiyoruz.
+            // Geçmiş modda bir stopun hiç çalışmaması mümkün; sert kapı
+            // olsaydı kullanıcı kalan görevleri hiç göremezdi.
+            if (!widget.isKaniti) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                    onPressed: widget.bitir,
+                    child: const Text('YİNE DE ATLA')),
+              ),
+            ],
           ],
         ],
       ),

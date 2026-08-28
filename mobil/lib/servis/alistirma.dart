@@ -84,13 +84,36 @@ class KumHavuzu extends ChangeNotifier {
 
   /// '' = henüz mod seçilmedi · 'gecmis' · 'canli'
   String mod = '';
+
+  /// '' = sorulmadı · 'rehberli' = görevler sırayla · 'serbest' = doğrudan
+  /// kum havuzu. Ayrı bir alan çünkü ikisi FARKLI sorular: "hangi zamanda"
+  /// ile "yardım ister misin" birbirine karıştırılırsa dört kutucuk çıkar
+  /// ve seçim kararı verilemez hale gelir.
+  String rehber = '';
+
   String tarih = '';
   double bakiye = baslangicBakiye;
   List<KumPozisyon> pozisyonlar = [];
   List<KumIslem> kapali = [];
   List<String> bitenGorevler = [];
 
-  bool get basladi => mod.isNotEmpty;
+  /// Görev başına kaç denemede bilindi. Puanı bu belirliyor: bir soruyu
+  /// beşinci denemede bilmek ile ilkinde bilmek aynı şey değil.
+  Map<String, int> denemeler = {};
+
+  int puan = 0;
+  List<String> rozetler = [];
+
+  bool get basladi => mod.isNotEmpty && rehber.isNotEmpty;
+  bool get rehberli => rehber == 'rehberli';
+
+  /// İlk denemede 10, ikincide 6, sonrasında 3 puan. Yanlış cevap
+  /// cezalandırılmıyor — sadece daha az ödüllendiriliyor; yanlış yapmaktan
+  /// korkan biri tahmin etmeyi bırakır ve tahmin etmek öğrenmenin kendisi.
+  static int puanHesapla(int deneme) =>
+      deneme <= 1 ? 10 : (deneme == 2 ? 6 : 3);
+
+  int get azamiPuan => 80;   // 8 görev x 10
   bool get gecmisModu => mod == 'gecmis';
   double get maliyetToplam =>
       pozisyonlar.fold(0.0, (a, p) => a + p.maliyet);
@@ -104,7 +127,15 @@ class KumHavuzu extends ChangeNotifier {
     final p = await SharedPreferences.getInstance();
     try {
       final ham = p.getString(anahtar);
-      if (ham == null) return;
+      if (ham == null) {
+        // Kayıt yoksa alanları VARSAYILANA döndür, sadece çıkma.
+        // Erken dönüş bellekteki eski durumu olduğu gibi bırakıyordu;
+        // yükleyicinin okumadığı bir durumu ayakta tutması, çağıranın
+        // "yükledim" sandığı şeyin gerçekte önceki hâl olması demek.
+        _varsayilana();
+        notifyListeners();
+        return;
+      }
       final j = jsonDecode(ham) as Map<String, dynamic>;
       mod = '${j['mod'] ?? ''}';
       tarih = '${j['tarih'] ?? ''}';
@@ -117,6 +148,16 @@ class KumHavuzu extends ChangeNotifier {
           .toList();
       bitenGorevler =
           ((j['gorevler'] ?? []) as List).map((e) => '$e').toList();
+      // Eski kayıtlarda bu alanlar yok. Varsayılanları, "rehberi hiç
+      // görmemiş" değil "eskiden beri rehberli" olacak şekilde seçiyorum:
+      // görev ilerlemesi olan biri zaten rehberdeydi, ona mod sorusunu
+      // yeniden sormak ilerlemesini kaybettiğini düşündürür.
+      rehber = '${j['rehber'] ?? (bitenGorevler.isNotEmpty ? 'rehberli' : '')}';
+      if (mod.isNotEmpty && rehber.isEmpty) rehber = 'rehberli';
+      puan = ((j['puan'] ?? 0) as num).toInt();
+      rozetler = ((j['rozetler'] ?? []) as List).map((e) => '$e').toList();
+      denemeler = ((j['denemeler'] ?? {}) as Map)
+          .map((k, v) => MapEntry('$k', (v as num).toInt()));
     } catch (_) {
       // Bozuk kayıt kum havuzunu açılmaz hale getirmemeli; sıfırdan başla.
     }
@@ -132,25 +173,44 @@ class KumHavuzu extends ChangeNotifier {
           'pozisyonlar': pozisyonlar.map((x) => x.toJson()).toList(),
           'kapali': kapali.map((x) => x.toJson()).toList(),
           'gorevler': bitenGorevler,
+          'rehber': rehber, 'puan': puan, 'rozetler': rozetler,
+          'denemeler': denemeler,
         }));
     notifyListeners();
   }
 
-  Future<void> basla(String yeniMod, String baslangicTarihi) async {
+  Future<void> basla(String yeniMod, String baslangicTarihi,
+      String yeniRehber) async {
     mod = yeniMod;
     tarih = baslangicTarihi;
+    rehber = yeniRehber;
     await _kaydet();
   }
 
-  /// Her şeyi siler. Görev ilerlemesi de gider — alıştırmayı baştan
-  /// yapmak isteyen biri görevleri de baştan istiyordur.
-  Future<void> sifirla() async {
+  /// Rehberi sonradan açıp kapatmak. "Kendi başıma" diyen biri takılırsa
+  /// baştan başlamak zorunda kalmamalı; ilerlemesi duruyor.
+  Future<void> rehberDegistir(String yeni) async {
+    rehber = yeni;
+    await _kaydet();
+  }
+
+  void _varsayilana() {
     mod = '';
+    rehber = '';
     tarih = '';
     bakiye = baslangicBakiye;
     pozisyonlar = [];
     kapali = [];
     bitenGorevler = [];
+    denemeler = {};
+    puan = 0;
+    rozetler = [];
+  }
+
+  /// Her şeyi siler. Görev ilerlemesi de gider — alıştırmayı baştan
+  /// yapmak isteyen biri görevleri de baştan istiyordur.
+  Future<void> sifirla() async {
+    _varsayilana();
     await _kaydet();
   }
 
@@ -212,10 +272,48 @@ class KumHavuzu extends ChangeNotifier {
     return r;
   }
 
-  Future<void> gorevBitir(String kod) async {
+  /// Bir denemeyi kaydeder ve o görevin kaçıncı denemesi olduğunu döner.
+  Future<int> denemeEkle(String kod) async {
+    final n = (denemeler[kod] ?? 0) + 1;
+    denemeler = {...denemeler, kod: n};
+    await _kaydet();
+    return n;
+  }
+
+  Future<void> gorevBitir(String kod, {int toplamGorev = 8}) async {
     if (bitenGorevler.contains(kod)) return;
     bitenGorevler = [...bitenGorevler, kod];
+    puan += puanHesapla(denemeler[kod] ?? 1);
+    _rozetleriTazele(toplamGorev);
     await _kaydet();
+  }
+
+  void _rozetleriTazele(int toplamGorev) {
+    void ver(String r) {
+      if (!rozetler.contains(r)) rozetler = [...rozetler, r];
+    }
+    final n = bitenGorevler.length;
+    if (n >= 1) ver('ilk_adim');
+    if (n >= (toplamGorev / 2).ceil()) ver('yarim_yol');
+    if (n >= toplamGorev) {
+      ver('mezun');
+      // Kusursuz: HER görev ilk denemede. Sonda veriliyor çünkü erken
+      // verilirse sonraki hatada geri almak gerekirdi ve kazanılmış bir
+      // rozeti geri almak, hiç vermemekten daha kötü.
+      if (bitenGorevler.every((k) => (denemeler[k] ?? 1) <= 1)) {
+        ver('kusursuz');
+      }
+    }
+    if (kapali.isNotEmpty) ver('ilk_islem');
+    if (kapali.any((i) => i.kar > 0)) ver('ilk_kar');
+    if (kapali.any((i) => i.sebep == 'stop')) ver('ilk_stop');
+  }
+
+  /// İşlem sonrası rozet kontrolü — alım/çıkış görevden bağımsız olabilir.
+  Future<void> islemRozetleri({int toplamGorev = 8}) async {
+    final onceki = rozetler.length;
+    _rozetleriTazele(toplamGorev);
+    if (rozetler.length != onceki) await _kaydet();
   }
 }
 
