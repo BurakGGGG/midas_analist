@@ -112,15 +112,22 @@ class _AyarlarDurum extends State<AyarlarEkran> {
                   obscureText: true,
                   decoration: const InputDecoration(
                     labelText: 'API anahtarı (bulut için)',
-                    helperText: 'Yerel ağda boş bırak. Cloud Run\'a dağıttıysan '
-                        'dagit.sh\'ın verdiği anahtarı gir.',
-                    helperMaxLines: 2,
+                    // Cloud Run projeden elendi (kalıcı disk yok);
+                    // dağıtım artık dagit.sh ile kendi sunucuna.
+                    helperText: 'Yerel ağda boş bırakabilirsin. Kendi '
+                        'sunucuna dağıttıysan dagit.sh\'ın ürettiği '
+                        'anahtarı gir.',
+                    // 2 satır yetmiyordu, metin "…" ile kesiliyordu.
+                    helperMaxLines: 3,
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
                 ),
                 const SizedBox(height: 12),
-                FilledButton.tonalIcon(
+                // Çerçeveli, dolu değil: bu ekranın birincil eylemi
+                // "Kaydet". İkisi de dolu fosforken hangisinin asıl iş
+                // olduğu görünmüyordu.
+                OutlinedButton.icon(
                   onPressed: _deneniyor ? null : _dene,
                   icon: _deneniyor
                       ? const SizedBox(

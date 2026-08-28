@@ -66,6 +66,16 @@ class Tez {
       .map((s) => s['soru']!)
       .toList();
 
+  /// Tez tam mı? Soru listesi YOKSA cevap "bilinmiyor" — false döner.
+  ///
+  /// Neden ayrı bir metot: `eksikler(bosListe)` boş liste döndürüyor ve
+  /// çağıran bunu "eksik yok, demek ki tam" diye okuyordu. Soru listesi
+  /// yalnızca Tez yaz ekranında dolduğu için, Tezler sekmesine oradan
+  /// geçmeden giren kullanıcıya BOŞ bir tez bile "TAM" görünüyordu.
+  /// Doğrulayamadığın şeye tam demek, eksik demekten kötü.
+  bool tamMi(List<Map<String, String>> sorular) =>
+      sorular.isNotEmpty && eksikler(sorular).isEmpty;
+
   Map<String, dynamic> toJson() => {
         'sembol': sembol, 'tarih': tarih, 'fiyat': fiyat, 'adet': adet,
         'cevaplar': cevaplar, 'anlik': anlik, 'kapanis': kapanis,

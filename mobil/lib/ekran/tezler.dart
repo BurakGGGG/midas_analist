@@ -15,6 +15,32 @@ class _TezlerDurum extends State<TezlerEkran> {
   final Map<String, List<String>> _bozulmalar = {};
   bool _kontrolEdiliyor = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _sorulariGetir();
+  }
+
+  /// Tez soruları eskiden YALNIZCA "Tez yaz" ekranında yükleniyordu.
+  /// Bu sekmeye oradan geçmeden giren kullanıcıda liste boş kalıyor ve
+  /// hiçbir tezin tam olup olmadığı bilinemiyordu. Ekranın tek işi bunu
+  /// söylemek olduğu için listeyi kendisi çekiyor.
+  Future<void> _sorulariGetir() async {
+    if (depo.tezSorulari.isNotEmpty) return;
+    try {
+      final r = await depo.api.tezSorulari();
+      if (!mounted) return;
+      depo.tezSorulari = r
+          .map((e) => Map<String, String>.from(
+              (e as Map).map((k, v) => MapEntry('$k', '$v'))))
+          .toList();
+      setState(() {});
+    } catch (_) {
+      // Ağ yoksa rozet "tam" demiyor, sessizce eksik sayıyor — yanlış
+      // güven vermekten iyi.
+    }
+  }
+
   Future<void> _bozulmaKontrol() async {
     setState(() => _kontrolEdiliyor = true);
     for (final t in depo.acikTezler) {
@@ -81,6 +107,7 @@ class _TezlerDurum extends State<TezlerEkran> {
 
   Widget _acikKart(BuildContext c, Sem sem, Tez t) {
     final eksik = t.eksikler(depo.tezSorulari);
+    final tam = t.tamMi(depo.tezSorulari);
     final boz = _bozulmalar[t.sembol] ?? [];
     return Kutu(
       tikla: () => Navigator.push(c,
@@ -97,7 +124,13 @@ class _TezlerDurum extends State<TezlerEkran> {
                   style: Theme.of(c).textTheme.bodySmall?.copyWith(
                       color: Theme.of(c).colorScheme.onSurfaceVariant)),
               const Spacer(),
-              if (eksik.isEmpty)
+              // Üç hâl, ikisi değil: soru listesi yüklenmediyse "0 soru
+              // boş" YANLIŞ okunuyor — "eksik yok" gibi duruyor, oysa
+              // kastedilen "bilmiyorum". Bilinmeyeni eksik gibi
+              // göstermek de tam gibi göstermek kadar yanlış.
+              if (depo.tezSorulari.isEmpty)
+                Rozet('kontrol edilemedi', renk: Renk.metinSonuk)
+              else if (tam)
                 Rozet('tam', renk: sem.arti)
               else
                 Rozet('${eksik.length} soru boş', renk: sem.uyari),

@@ -316,8 +316,11 @@ class Depo extends ChangeNotifier {
     double g(Tez t) => ((t.kapanis!['getiri_yuzde'] ?? 0) as num).toDouble();
     final getiriler = k.map(g).toList();
     final kazanan = getiriler.where((x) => x > 0).length;
-    final tam = k.where((t) => t.eksikler(tezSorulari).isEmpty).toList();
-    final eksik = k.where((t) => t.eksikler(tezSorulari).isNotEmpty).toList();
+    // tamMi: soru listesi yüklenmemişse hiçbir tez "tam" sayılmaz.
+    // eksikler(bosListe).isEmpty kullanılsaydı, liste boşken TÜM tezler
+    // tam görünür ve "tam tez daha mı iyi getiriyor" kıyası anlamsızlaşırdı.
+    final tam = k.where((t) => t.tamMi(tezSorulari)).toList();
+    final eksik = k.where((t) => !t.tamMi(tezSorulari)).toList();
     double ort(List<Tez> l) =>
         l.isEmpty ? 0 : l.map(g).reduce((a, b) => a + b) / l.length;
     return {

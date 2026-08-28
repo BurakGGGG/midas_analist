@@ -184,6 +184,12 @@ class _KarneDurum extends State<KarneEkran> {
           final durum = '${m['durum']}';
           final renk = durum.contains('İYİ')
               ? sem.arti : durum.contains('KÖTÜ') ? sem.eksi : sem.uyari;
+          // Rozet KISA etiket için: "TUT", "KIRILIM" gibi. Sunucudan gelen
+          // `durum` ise tam cümle ("canlı DAHA KÖTÜ — beklenen aralığın
+          // altında") ve rozete basılınca satırı taşırıyordu. Rozet
+          // taranmak, cümle anlaşılmak için — ikisi ayrı satırda.
+          final kisaDurum = durum.contains('İYİ')
+              ? 'İYİ' : durum.contains('KÖTÜ') ? 'KÖTÜ' : 'BEKLENEN';
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Kutu(
@@ -194,9 +200,13 @@ class _KarneDurum extends State<KarneEkran> {
                     Text('${m['strateji']}',
                         style: Theme.of(c).textTheme.titleMedium?.copyWith(fontSize: 15)),
                     const Spacer(),
-                    Rozet(durum, renk: renk),
+                    Rozet(kisaDurum, renk: renk),
                   ]),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
+                  Text(durum,
+                      style: Theme.of(c).textTheme.bodySmall
+                          ?.copyWith(color: renk, height: 1.4)),
+                  const SizedBox(height: 6),
                   Text('Canlı kazanma %${tl((m['canli'] as Map)['kazanma_orani'] as num?, basamak: 1)}'
                       '  ·  backtest %${tl((m['backtest'] as Map)['kazanma_orani'] as num?, basamak: 1)}'
                       '  ·  fark ${(m['kazanma_farki'] as num?)?.toStringAsFixed(1)} puan',

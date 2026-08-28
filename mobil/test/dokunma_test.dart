@@ -14,8 +14,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:midas_analist/ekran/kabuk.dart';
 import 'package:midas_analist/parca/kart.dart';
+import 'package:midas_analist/servis/modeller.dart';
 
 void main() {
+  _tezTestleri();
   group('iç içe dokunma hedefi', () {
     testWidgets('içteki düğme dıştaki karta rağmen çalışır', (t) async {
       var dis = 0, ic = 0;
@@ -132,6 +134,43 @@ void main() {
       expect(sekme.value, Sekme.portfoy);
       expect(find.text('git'), findsNothing, reason: 'üstteki sayfa kapanmalı');
       expect(find.text('aç'), findsOneWidget);
+    });
+  });
+}
+
+// ── tez tamlığı ────────────────────────────────────────────────────────────
+//
+// Sessiz bir doğruluk hatasıydı: tez soruları yalnızca "Tez yaz" ekranında
+// yükleniyor, Tezler sekmesine oradan geçmeden girilince liste boş
+// kalıyordu. eksikler(bosListe) boş liste döndüğü için TAMAMEN BOŞ bir tez
+// bile "TAM" rozetiyle görünüyordu — ekranın tek işi bunu söylemekken.
+
+void _tezTestleri() {
+  group('tez tamlığı', () {
+    final sorular = [
+      {'anahtar': 'ne', 'soru': 'Ne alıyorum?'},
+      {'anahtar': 'yanilma_kosulu', 'soru': 'Hangi durumda yanıldığımı kabul ederim?'},
+    ];
+
+    Tez tez(Map<String, String> cevaplar) => Tez(
+        sembol: 'THYAO', tarih: '2026-08-14', fiyat: 300, cevaplar: cevaplar);
+
+    test('soru listesi boşken TAM denmez', () {
+      expect(tez(const {}).tamMi(const []), isFalse);
+      expect(tez(const {'ne': 'x', 'yanilma_kosulu': 'y'}).tamMi(const []),
+          isFalse,
+          reason: 'doğrulanamayan şeye tam demek, eksik demekten kötü');
+    });
+
+    test('tüm cevaplar doluysa tam', () {
+      expect(tez(const {'ne': 'x', 'yanilma_kosulu': 'y'}).tamMi(sorular),
+          isTrue);
+    });
+
+    test('eksik cevap varsa tam değil', () {
+      expect(tez(const {'ne': 'x'}).tamMi(sorular), isFalse);
+      expect(tez(const {'ne': 'x', 'yanilma_kosulu': '   '}).tamMi(sorular),
+          isFalse, reason: 'boşluk dolu sayılmamalı');
     });
   });
 }

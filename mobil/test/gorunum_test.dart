@@ -17,6 +17,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'dart:convert';
 
 import 'package:midas_analist/ekran/alistirma.dart';
+import 'package:midas_analist/ekran/ayarlar.dart';
+import 'package:midas_analist/ekran/karne.dart';
+import 'package:midas_analist/ekran/risk_ekran.dart';
+import 'package:midas_analist/ekran/tezler.dart';
 import 'package:midas_analist/ekran/hesap.dart';
 import 'package:midas_analist/ekran/portfoy.dart';
 import 'package:midas_analist/ekran/tarama.dart';
@@ -81,6 +85,28 @@ class _SahteApi extends Api {
     double azamiPozisyon = 35, int adet = 40,
   }) async =>
       _oku('tarama_veri.json');
+
+  Map<String, dynamic> _ikili(String ad) => Map<String, dynamic>.from(
+      (_oku('karne_risk_veri.json')[ad]) as Map);
+
+  @override
+  Future<List<dynamic>> tezSorulari() async => const [
+        {'anahtar': 'neden_sirket', 'soru': 'Neden BU şirket?'},
+        {'anahtar': 'neden_fiyat', 'soru': 'Neden BU fiyat?'},
+        {'anahtar': 'hakli_kosul', 'soru': 'Hangi durumda haklı çıkacaksın?'},
+        {'anahtar': 'yanilma_kosulu', 'soru': 'Hangi durumda yanıldığını kabul edeceksin?'},
+        {'anahtar': 'hedef', 'soru': 'Hedefin ne?'},
+        {'anahtar': 'sure', 'soru': 'Yatırım süren ne kadar?'},
+        {'anahtar': 'alternatif', 'soru': 'Mevduata konsa ne olurdu?'},
+        {'anahtar': 'en_buyuk_risk', 'soru': 'En büyük risk ne?'},
+      ];
+
+  @override
+  Future<Map<String, dynamic>> gunlukKarne() async => _ikili('karne');
+
+  @override
+  Future<Map<String, dynamic>> risk({required double sermaye}) async =>
+      _ikili('risk');
 
   @override
   Future<Map<String, dynamic>> alistirmaGorevler() async => {
@@ -382,6 +408,74 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/portfoy.png'));
+  });
+
+  // ── hiç bakılmamış ekranlar ──────────────────────────────────────────────
+
+  testWidgets('tezler', (t) async {
+    SharedPreferences.setMockInitialValues({
+      'tezler_v1': '''
+[{"sembol":"GESAN","tarih":"2026-08-14","fiyat":84.5,"adet":3,
+  "cevaplar":{"neden_sirket":"Elektrik taahhüt; enerji yatırımları hızlanıyor",
+    "neden_fiyat":"20 günlük zirveyi hacimle kırdı, FD/FAVÖK sektör medyanının altında",
+    "hakli_kosul":"3 çeyrek üst üste FAVÖK marjı %12 üstünde kalırsa",
+    "yanilma_kosulu":"78,20 altında kapanış ya da yeni ihale iptali",
+    "hedef":"110,70 (3,5 ATR)","sure":"20 gün",
+    "alternatif":"Mevduat %45; bu işlem 2,5 ödül/risk sunuyor",
+    "en_buyuk_risk":"Proje bazlı gelir; tek ihale kaybı çeyreği bozar"},
+  "anlik":{"skor":73.3,"rsi":68.6},"kapanis":null},
+ {"sembol":"THYAO","tarih":"2026-08-20","fiyat":312.0,"adet":1,
+  "cevaplar":{"neden_sirket":"Havacılık, kapasite artışı",
+    "neden_fiyat":"EMA20'ye geri çekildi"},
+  "anlik":{"skor":61.0},"kapanis":null},
+ {"sembol":"EUREN","tarih":"2026-07-02","fiyat":41.0,"adet":8,
+  "cevaplar":{"neden_sirket":"Kimya","yanilma_kosulu":"RSI2 70 üstü"},
+  "anlik":{"skor":58.0},
+  "kapanis":{"fiyat":38.2,"tarih":"2026-07-19","getiri_yuzde":-6.8,
+    "sebep":"stop","ders":"Tez zayıftı: neden BU fiyat sorusunu atlamışım"}}]''',
+    });
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1200));
+    await t.pumpWidget(_sarmala(const TezlerEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/tezler.png'));
+  });
+
+  testWidgets('karne', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1900));
+    await t.pumpWidget(_sarmala(const KarneEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/karne.png'));
+  });
+
+  testWidgets('risk', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1600));
+    await t.pumpWidget(_sarmala(const RiskEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/risk.png'));
+  });
+
+  testWidgets('ayarlar', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await t.binding.setSurfaceSize(const Size(420, 1400));
+    await t.pumpWidget(_sarmala(const AyarlarEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/ayarlar.png'));
   });
 
   testWidgets('alistirma mod secimi', (t) async {
