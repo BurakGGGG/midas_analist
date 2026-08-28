@@ -1,7 +1,7 @@
 """`.env` dosyasını ortama yükler — bağımlılıksız.
 
 Neden var: anahtarı kendi terminalinde `export` etmek yetmiyor. Üç ayrı
-giriş noktası var (CLI, uvicorn sunucusu, 18:10 systemd zamanlayıcısı) ve
+giriş noktası var (CLI, uvicorn sunucusu, akşam systemd zamanlayıcısı) ve
 zamanlayıcı senin oturumunu HİÇ görmez. Anahtar tek yerde tanımlanmazsa
 gece çalışan iş AI katmanını sessizce atlar ve bunu kimse fark etmez.
 

@@ -1,6 +1,6 @@
 """Günlük iş: BIST kapanışından sonra çalışır, veriyi toplar, ölçer, kaydeder.
 
-BIST 18:00'de kapanır. İş 18:10'da çalışacak şekilde tasarlandı — veri
+BIST 18:00'de kapanır. İş 19:00'da çalışacak şekilde tasarlandı — veri
 sağlayıcının kapanış fiyatını işlemesi için birkaç dakika payı var.
 
 Ne yapar:
@@ -98,6 +98,32 @@ def calistir(sermaye: float = 1000.0, evren_adi: str = "bist100",
             print(m, flush=True)
 
     try:
+        # ── 0) DÜNÜ ONAR
+        # BIST'in kapanış seansı 18:00-18:10'da biter ve resmî kapanış
+        # ancak ondan sonra yayına girer. İş ne kadar geç çalışırsa
+        # çalışsın, bir gün erken yakalama ihtimali kalıyor. Bu adım
+        # önceki günlerin kayıtlarını gerçek kapanışla karşılaştırıp
+        # düzeltir — ambar zamanla doğruya yakınsar.
+        #
+        # Ölçüldü (28 Ağustos 2026): tek seferde 8524 kaydın 858'i
+        # yanlıştı, sapmalar %3'e kadar çıkıyordu. Sistemin tüm iddiası
+        # dürüst ölçüm; ölçtüğü fiyat yanlışsa gerisi tartışmalı olur.
+        try:
+            from . import kapanis_onarim
+            _o = kapanis_onarim.onar(gun=7)
+            # Zincir her koşuda yeniden kuruluyor: bölünme geçiren bir
+            # hissede `onceki` alanı eski (bölünme öncesi) fiyatı tutar
+            # ve satır kendi içinde tutarsızlaşır. Kaynağın düzeltmediği
+            # sermaye olayları da burada "bilinmiyor" olarak işaretlenir
+            # — uydurma getiri ortalamalara ve sicile sızmasın.
+            _z = kapanis_onarim.zinciri_yeniden_kur()
+            rapor["adimlar"]["kapanis_onarim"] = {**_o, "zincir": _z}
+            if _o.get("duzeltilen") or _z.get("guncellenen"):
+                yaz(f"» 0/6  {_o.get('duzeltilen', 0)} kapanış düzeltildi, "
+                    f"{_z.get('guncellenen', 0)} satır tutarlandı")
+        except Exception as e:
+            rapor["adimlar"]["kapanis_onarim"] = {"hata": str(e)[:150]}
+
         # ── 1) FİYAT VE GÖSTERGELER
         yaz("» 1/6  Fiyat verisi çekiliyor...")
         ra = RiskAyarlari(sermaye=sermaye)

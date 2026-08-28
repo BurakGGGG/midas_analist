@@ -68,7 +68,7 @@ def test_ambar_bossa_susar(db):
 
 
 def test_kurulmamis_ambar_cokme_uretmez(tmp_path):
-    """Taze kurulumda tablolar ilk 18:10 işinden ÖNCE yok. Hatırlatıcının
+    """Taze kurulumda tablolar ilk akşam işinden ÖNCE yok. Hatırlatıcının
     çökmesi, sessizce susmasından kötü: nöbetçi katmanı boşuna alarm
     verir ve gerçek arızalar gürültüde kaybolur."""
     r = sabah.hazirla(date(2026, 8, 26), yol=tmp_path / "hic_yok.db")

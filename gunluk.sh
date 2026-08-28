@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Midas Analist günlük işi. BIST 18:00'de kapanır; bu betik 18:10'da çalışır.
+# Midas Analist günlük işi. BIST 18:00'de kapanır, kapanış seansı 18:10'a kadar sürer;
+# bu betik 19:00'da çalışır (resmî kapanış yayına girsin diye).
 set -uo pipefail
 cd "$(dirname "$0")"
 

@@ -5,7 +5,7 @@ import '../tema.dart';
 import 'hisse.dart';
 import 'karne.dart';
 
-/// Gün özeti — backend'in 18:10'da topladığı verinin görünümü.
+/// Gün özeti — backend'in akşam topladığı verinin görünümü.
 ///
 /// "Dün 100 TL, bugün 103 TL" tam olarak burada: her hissenin önceki kapanışı
 /// ve bugünkü kapanışı ambarda saklanır, buradan okunur.

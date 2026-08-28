@@ -1,6 +1,6 @@
 """Telegram bildirimleri — sunucunun kullanıcıya ULAŞABİLMESİ.
 
-NEDEN VAR: günlük iş her akşam 18:10'da çalışıp günü özetliyordu, sonra
+NEDEN VAR: günlük iş her akşam çalışıp günü özetliyordu, sonra
 kullanıcı uygulamayı açana kadar bekliyordu. Ölçüldü: 65 dersten 1'i
 okunmuştu, sebep içerik değil erişimdi. Sunucu 7/24 çalışıyor ama tek
 yönlü — dışarı hiçbir şey söylemiyordu.

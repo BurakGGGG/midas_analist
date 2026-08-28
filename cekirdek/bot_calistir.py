@@ -492,7 +492,7 @@ def main() -> int:
         uyari = saglik.nobet()
         if uyari:
             r = haberci.yolla(uyari, "Midas · günlük iş çalışmadı",
-                              "18:10 işi bugün çalışmamış görünüyor.",
+                              "Akşam işi bugün çalışmamış görünüyor.",
                               veri={"ekran": "saglik"})
             if r.get("telegram") or r["push"]["gonderildi"]:
                 saglik.uyari_isaretle("gunluk_is")

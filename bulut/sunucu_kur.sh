@@ -143,14 +143,18 @@ EnvironmentFile=$KOK/.env
 ExecStart=$KOK/gunluk.sh
 SRV
 
-# BIST 18:00'de kapanır, iş 18:10'da çalışır. Sunucu saati 1. adımda
+# BIST 18:00'de kapanır ama KAPANIŞ SEANSI (açık artırma) 18:10'a kadar
+# sürer ve resmî kapanış fiyatı ancak ondan sonra yayına girer. İş
+# eskiden 18:10'da çalışıyordu ve kesinleşmemiş fiyatı yakalıyordu —
+# ölçüldü, 8524 kaydın 858'i yanlıştı. 19:00 güvenli pay bırakıyor.
+# Sunucu saati 1. adımda
 # Europe/Istanbul yapıldı; OnCalendar de yerel saati kullanır.
 sudo tee /etc/systemd/system/midas-gunluk.timer >/dev/null <<TMR
 [Unit]
-Description=Midas Analist günlük iş zamanlayıcı (iş günleri 18:10)
+Description=Midas Analist günlük iş zamanlayıcı (iş günleri 19:00)
 
 [Timer]
-OnCalendar=Mon..Fri *-*-* 18:10:00
+OnCalendar=Mon..Fri *-*-* 19:00:00
 # Sunucu o an kapalıysa (bakım, yeniden başlatma) açılışta telafi et.
 Persistent=true
 RandomizedDelaySec=120

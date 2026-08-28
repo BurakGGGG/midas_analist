@@ -1,6 +1,6 @@
 """Sistem sağlığı — sessiz arızayı sesli hale getirir.
 
-NEDEN VAR: bu sistemin bütün değeri her akşam 18:10'da çalışan işte.
+NEDEN VAR: bu sistemin bütün değeri her akşam çalışan günlük işte.
 O iş çökerse ne olurdu? Bugüne kadar HİÇBİR ŞEY: hata ambara yazılıyor,
 kayda düşüyor ve orada kalıyordu. Kullanıcı akşam mesajı gelmeyince
 "bugün sinyal yoktur" diye düşünürdü. Bir hafta böyle geçse öğrenme
@@ -26,7 +26,11 @@ from . import ambar
 
 YEDEK_DIZIN = Path(__file__).resolve().parent.parent / "veri" / "yedek"
 YEDEK_SAYISI = 7          # bir haftalık geriye dönüş
-NOBET_SAATI = 19          # işin 18:10'da bitmiş olması beklenir
+# İş 19:00'da başlıyor ve birkaç dakika sürüyor; kontrol 20'de.
+# Bu sayı işin saatiyle birlikte kaymalı — 19'da kalsaydı nöbetçi her
+# akşam "iş çalışmamış" diye yanlış alarm verirdi ve yanlış alarm
+# gerçek alarmı değersizleştirir.
+NOBET_SAATI = 20
 DISK_ESIK_YUZDE = 85
 
 

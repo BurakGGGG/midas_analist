@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Günlük işi her iş günü 18:10'da çalıştıracak şekilde kurar.
+# Günlük işi her iş günü 19:00'da çalıştıracak şekilde kurar.
 # systemd kullanıcı zamanlayıcısı tercih edilir (yeniden başlatmaya dayanır,
 # günlüğü journald'a yazar). Yoksa cron'a düşer.
 set -euo pipefail
 KOK="$(cd "$(dirname "$0")" && pwd)"
-SAAT="${SAAT:-18:10}"
+SAAT="${SAAT:-19:00}"
 
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
   mkdir -p ~/.config/systemd/user

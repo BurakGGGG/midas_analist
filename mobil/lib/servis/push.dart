@@ -78,7 +78,7 @@ class Push extends ChangeNotifier {
 
       // Uygulama AÇIKKEN gelen bildirim sistem tepsisine düşmez; burada
       // yakalanmazsa kullanıcı hiçbir şey görmez.
-      // Sunucu 09:45, 18:10 ve stop olaylarında bildirim yolluyor —
+      // Sunucu 09:45, 19:00 ve stop olaylarında bildirim yolluyor —
       // yani widget'ın tam da yanılmaması gereken anlar bunlar.
       // 15 dakikalık arka plan işi Android tarafından öldürülse bile
       // widget bu üç anda doğru kalıyor.

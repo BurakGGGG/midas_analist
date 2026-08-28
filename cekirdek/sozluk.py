@@ -654,7 +654,7 @@ aradaki gecikmede fiyat çoktan hareket etmiş olur.""",
 
 Terim("seans",
  "BIST'in işlem saatleri.",
- """Sürekli işlem 10:00-18:00. Sistemin günlük işi 18:10'da, kapanış
+ """Sürekli işlem 10:00-18:00. Sistemin günlük işi 19:00'da, kapanış
 verisi kesinleştikten sonra çalışır. Gün içi veri 15 dakika gecikmeli
 geldiği için sistem gün içi karar vermez.""",
  nerede="Günlük işin çalışma saati.",

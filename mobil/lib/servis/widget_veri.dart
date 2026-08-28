@@ -23,7 +23,7 @@ import '../tema.dart' show tl;
 /// TAZELEME ÜÇ YOLDAN:
 ///   1. Uygulama açılınca / öne gelince
 ///   2. WorkManager ile seans içinde 15 dakikada bir
-///   3. Push geldiğinde (sunucu 09:45, 18:10 ve stop olaylarında yolluyor)
+///   3. Push geldiğinde (sunucu 09:45, 19:00 ve stop olaylarında yolluyor)
 ///
 /// İkincisi kullanıcının tercihi, ama Android arka plan işlerini pil için
 /// öldürüyor ve bazı markalarda hiç çalışmıyor. Üçüncüsü onun sigortası:

@@ -2,7 +2,7 @@
 
 NEDEN VAR: sinyal t günü KAPANIŞINDA üretiliyor, işlem t+1 AÇILIŞINDA
 yapılıyor (bkz. cekirdek/strateji.py). Arada 16 saat ve bir uyku var.
-18:10 işi "bugün ne oldu" diyor; sabah kimse "şimdi şunu yap" demiyordu.
+Akşam işi "bugün ne oldu" diyor; sabah kimse "şimdi şunu yap" demiyordu.
 
 Kullanıcının ilk sorusu tam buydu: "pazartesi baktım, salı mı alacağım?"
 
@@ -67,12 +67,12 @@ def hazirla(bugun: date | None = None, yol=None) -> dict:
     try:
         ozet = ambar.ozet_oku(beklenen.isoformat(), yol=yol)
         if ozet is None:
-            # Son çareyi dene: belki 18:10 işi gecikmeli çalıştı ve başka
+            # Son çareyi dene: belki akşam işi gecikmeli çalıştı ve başka
             # bir tarihe yazdı. En yeni özeti al, yaşına bak.
             tarihler = ambar.ozet_tarihleri(azami=5, yol=yol)
             ozet = ambar.ozet_oku(tarihler[0], yol=yol) if tarihler else None
     except Exception as e:
-        # Taze kurulumda ambar tabloları henüz yok (ilk 18:10 işinden
+        # Taze kurulumda ambar tabloları henüz yok (ilk akşam işinden
         # önce). Hatırlatıcının bu yüzden ÇÖKMESİ, sessizce susmasından
         # daha kötü: nöbetçi katmanı gereksiz yere alarm verir.
         return {"gonder": False, "sebep": f"ambar okunamadı: {str(e)[:80]}"}

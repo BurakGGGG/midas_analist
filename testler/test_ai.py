@@ -201,7 +201,7 @@ def test_anahtarsiz_calismaz(monkeypatch):
 
 
 # ── .env yükleyici ──────────────────────────────────────────────────────
-# Yük taşıyan bir parça: anahtar buradan gelmezse 18:10'daki zamanlanmış iş
+# Yük taşıyan bir parça: anahtar buradan gelmezse akşamki zamanlanmış iş
 # AI katmanını sessizce atlar ve kimse fark etmez.
 
 from cekirdek import ortam   # noqa: E402

@@ -22,7 +22,7 @@ def _yuzde(v) -> str:
 
 
 def gunluk_ozet(ozet: dict, siniflar: dict | None = None) -> str:
-    """18:10 işinin sonucu — akşam cebe düşen mesaj."""
+    """Günlük işin sonucu — akşam cebe düşen mesaj."""
     if not ozet or ozet.get("hata"):
         return "⚠️ <b>Midas</b> — günlük iş çalıştı ama özet çıkarılamadı."
 
@@ -146,7 +146,7 @@ def sabah_push(plan: dict) -> tuple[str, str]:
 
 
 def gunluk_push(ozet: dict) -> tuple[str, str]:
-    """(başlık, gövde) — 18:10 bildirimi."""
+    """(başlık, gövde) — akşam bildirimi."""
     if not ozet or ozet.get("hata"):
         return "Midas", "Günlük iş çalıştı ama özet çıkarılamadı."
     sinyaller = ozet.get("sinyal_veren") or []
@@ -184,7 +184,7 @@ def stop_push(pozisyon: dict, fiyat: float, tur: str) -> tuple[str, str]:
 def stop_uyarisi(pozisyon: dict, fiyat: float, tur: str) -> str:
     """Stop ya da hedef seviyesine yaklaşma/geçme uyarısı.
 
-    Bu mesajın var olma sebebi tek: günlük iş 18:10'da çalışıyor. Stop
+    Bu mesajın var olma sebebi tek: günlük iş akşam çalışıyor. Stop
     saat 11:00'de geçilirse akşama kadar haberin olmaz — o da uygulamayı
     açarsan. Gerçek para kaybettiren boşluk burasıdır.
     """
