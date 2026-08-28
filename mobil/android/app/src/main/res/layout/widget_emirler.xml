@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bugün açılışta girilecek emirler. Sabah bildirimi kaydırılıp geçilir;
+     bu widget 10:00'a kadar ekranda durur ve emri girerken bakılır. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/emirler_kok"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_zemin"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="BUGÜN AÇILIŞTA"
+            android:textColor="@color/w_aksan"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+        <TextView
+            android:id="@+id/emirler_sayi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/w_aksan"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/emirler_govde"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/w_metin"
+        android:textSize="13sp"
+        android:fontFamily="monospace"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="4"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/emirler_alt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/w_sonuk"
+        android:textSize="10sp"
+        android:fontFamily="monospace" />
+</LinearLayout>

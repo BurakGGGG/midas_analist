@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  updatePeriodMillis 0: Android'in kendi periyodik güncellemesi KAPALI.
+  Tazeleme WorkManager ile 15 dakikada bir yapılıyor, ayrıca push
+  geldiğinde ve uygulama açıldığında. Android'inki en sık 30 dakika
+  olabiliyor ve zaten garantisiz; ikisini birden çalıştırmak boşuna
+  ikinci bir kaynak demekti.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_rejim"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

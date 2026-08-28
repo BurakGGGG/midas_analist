@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- tema.dart'taki Renk sınıfının karşılığı. İki yerde tanımlı olması
+     hoş değil ama widget XML'i Dart sabitlerini okuyamıyor; en azından
+     tek dosyada toplanıp kaynağı yazılmış olsun. -->
+<resources>
+    <color name="w_zemin">#0A0C0A</color>
+    <color name="w_panel">#12160F</color>
+    <color name="w_cizgi">#2C3626</color>
+    <color name="w_metin">#D8E0CE</color>
+    <color name="w_solgun">#8A9680</color>
+    <color name="w_sonuk">#5A6552</color>
+    <color name="w_aksan">#A3E635</color>
+    <color name="w_arti">#3DD68C</color>
+    <color name="w_eksi">#FF5C5C</color>
+    <color name="w_uyari">#FFB020</color>
+</resources>

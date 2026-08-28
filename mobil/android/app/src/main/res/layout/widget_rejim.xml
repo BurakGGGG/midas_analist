@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rejim_kok"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_zemin"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/rejim_xu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/w_metin"
+        android:textSize="14sp"
+        android:fontFamily="monospace" />
+
+    <TextView
+        android:id="@+id/rejim_ad"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:textColor="@color/w_uyari"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+
+    <TextView
+        android:id="@+id/rejim_reel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/w_solgun"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+</LinearLayout>

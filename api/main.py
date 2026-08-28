@@ -1044,6 +1044,91 @@ def hesap_parola(istek: ParolaIstek,
     return {"degisti": True, "yeniden_giris_gerekli": True}
 
 
+# ══════════════════════════════════════════════════════ ana ekran widget'ları
+
+
+class WidgetIstek(BaseModel):
+    pozisyonlar: list[Pozisyon] = Field(default_factory=list)
+    sermaye: float = 1000
+
+
+@app.post("/widget")
+def widget_veri(istek: WidgetIstek):
+    """Üç widget'ın ihtiyacı olan her şey TEK istekte.
+
+    Neden tek uç: widget'ı arka plan işi tazeliyor ve o iş pil için
+    öldürülmeye açık. Üç ayrı çağrı yapsaydık biri yarıda kalınca
+    widget'lar birbiriyle çelişen anlar gösterirdi — biri 10:15, diğeri
+    11:30 itibarıyla. Tek çağrı ya hep ya hiç.
+
+    Her bölüm kendi kabuğunda: makro çökerse emirler yine gitmeli.
+    Widget'ta eksik bir kutu, hiç veri olmamasından iyidir.
+    """
+    from datetime import datetime as _dt
+    cikti: dict = {"zaman": _dt.now().isoformat(timespec="seconds")}
+
+    # ── bugün açılışta girilecek emirler (sabah hatırlatıcısının verisi)
+    try:
+        from cekirdek import sabah
+        plan = sabah.hazirla()
+        emirler = plan.get("emirler") or [] if plan.get("gonder") else []
+        cikti["emirler"] = {
+            "sayi": len(emirler),
+            "tarih": plan.get("tarih", ""),
+            "liste": [{"sembol": e["sembol"], "adet": e.get("adet", 0),
+                       "giris": e.get("fiyat", 0), "stop": e.get("stop", 0),
+                       "hedef": e.get("hedef", 0)} for e in emirler[:3]],
+        }
+    except Exception as e:
+        cikti["emirler"] = {"sayi": 0, "liste": [], "hata": str(e)[:100]}
+
+    # ── portföy: pozisyonlar telefondan gelir, fiyat sunucudan
+    try:
+        if istek.pozisyonlar:
+            p = portfoy_kontrol(PortfoyIstek(pozisyonlar=istek.pozisyonlar,
+                                             sermaye=istek.sermaye))
+            o = p.get("ozet") or {}
+            satirlar = p.get("pozisyonlar") or []
+            # Stopa en yakın pozisyon: widget'ta tek satır yer var, en
+            # kritik olanı göstermeli.
+            enyakin = None
+            for x in satirlar:
+                fiyat = float(x.get("fiyat") or 0)
+                stop = float(x.get("stop") or 0)
+                if fiyat <= 0 or stop <= 0:
+                    continue
+                mesafe = (fiyat / stop - 1) * 100
+                if enyakin is None or mesafe < enyakin["mesafe_yuzde"]:
+                    enyakin = {"sembol": x.get("sembol", ""),
+                               "mesafe_yuzde": round(mesafe, 1)}
+            cikti["portfoy"] = {
+                "deger": o.get("deger", 0), "kar": o.get("kar", 0),
+                "kar_yuzde": o.get("kar_yuzde", 0), "nakit": o.get("nakit", 0),
+                "adet": len(satirlar), "en_yakin_stop": enyakin,
+                "satilacak": o.get("satilacak", 0),
+            }
+        else:
+            cikti["portfoy"] = {"adet": 0}
+    except Exception as e:
+        cikti["portfoy"] = {"adet": 0, "hata": str(e)[:100]}
+
+    # ── piyasa rejimi
+    try:
+        m = makro.durum(onbellek_saat=1.0)
+        r = makro.rejim(m)
+        xu = m.oz("xu100")
+        cikti["rejim"] = {
+            "ad": r["rejim"], "aciklama": r["aciklama"],
+            "xu100_degisim": (xu or {}).get("g1"),
+            "reel_1y": (round(xu["g365"] - m.enflasyon["yillik"], 2)
+                        if xu and m.enflasyon else None),
+        }
+    except Exception as e:
+        cikti["rejim"] = {"ad": "", "hata": str(e)[:100]}
+
+    return guvenli(cikti)
+
+
 # ══════════════════════════════════════════════════════ alıştırma kum havuzu
 #
 # Durum TELEFONDA: bakiye, pozisyonlar ve görev ilerlemesi orada yaşıyor ve

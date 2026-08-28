@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import 'depo.dart';
 import 'hesap.dart';
+import 'widget_veri.dart';
 
 /// Push bildirimi (Firebase Cloud Messaging).
 ///
@@ -24,6 +25,17 @@ import 'hesap.dart';
 /// da kendiliğinden yenilenebilir. Bu yüzden her açılışta VE her
 /// yenilemede sunucuya gönderiliyor. Tek seferlik kayıt yapsaydık jeton
 /// yenilendiği gün bildirimler sessizce kesilirdi.
+/// Uygulama kapalıyken gelen bildirim. Ayrı izolatta çalışıyor: buradan
+/// `depo` görünmez, ayarlar diskten okunur.
+@pragma('vm:entry-point')
+Future<void> _arkaPlanMesaji(RemoteMessage m) async {
+  try {
+    await Firebase.initializeApp();
+    await WidgetVeri.disktenTazele();
+  } catch (_) {}
+}
+
+
 class Push extends ChangeNotifier {
   bool hazir = false;
   bool izinVar = false;
@@ -66,10 +78,16 @@ class Push extends ChangeNotifier {
 
       // Uygulama AÇIKKEN gelen bildirim sistem tepsisine düşmez; burada
       // yakalanmazsa kullanıcı hiçbir şey görmez.
+      // Sunucu 09:45, 18:10 ve stop olaylarında bildirim yolluyor —
+      // yani widget'ın tam da yanılmaması gereken anlar bunlar.
+      // 15 dakikalık arka plan işi Android tarafından öldürülse bile
+      // widget bu üç anda doğru kalıyor.
       FirebaseMessaging.onMessage.listen((m) {
         acilacakEkran.value = null;   // ön planda: yalnızca tazele
+        WidgetVeri.tazele();
         notifyListeners();
       });
+      FirebaseMessaging.onBackgroundMessage(_arkaPlanMesaji);
 
       // Bildirime dokunulup uygulama açıldığında.
       FirebaseMessaging.onMessageOpenedApp.listen((m) {

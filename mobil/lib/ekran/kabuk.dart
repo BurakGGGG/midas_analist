@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
+
+import '../servis/push.dart';
+import 'makro.dart';
+import 'gun_ozeti.dart';
 import 'bugun.dart';
 import 'tarama.dart';
 import 'portfoy.dart';
@@ -25,6 +30,30 @@ void sekmeyeGit(BuildContext c, Sekme s) {
   sekme.value = s;
 }
 
+/// Bildirimden ya da widget'tan gelen "şu ekranı aç" isteğini karşılar.
+///
+/// TEK KAPI: push bildirimi `data.ekran` gönderiyor, widget ise
+/// `midas://<ekran>` URI'si. İkisi de aynı adlara çözülüyor; ayrı ayrı
+/// çözseydik biri eklenip diğeri unutulurdu.
+void _ekranaGit(BuildContext c, String ad) {
+  switch (ad) {
+    case 'tarama':
+      sekmeyeGit(c, Sekme.tarama);
+    case 'portfoy':
+      sekmeyeGit(c, Sekme.portfoy);
+    case 'tezler':
+      sekmeyeGit(c, Sekme.tezler);
+    case 'makro':
+      Navigator.push(c, MaterialPageRoute(builder: (_) => const MakroEkran()));
+    case 'gun_ozeti':
+      Navigator.push(c,
+          MaterialPageRoute(builder: (_) => const GunOzetiEkran()));
+    default:
+      sekmeyeGit(c, Sekme.bugun);
+  }
+}
+
+
 class Kabuk extends StatefulWidget {
   const Kabuk({super.key});
   @override
@@ -39,11 +68,33 @@ class _KabukDurum extends State<Kabuk> {
   void initState() {
     super.initState();
     sekme.addListener(_degisti);
+    push.acilacakEkran.addListener(_bildirimden);
+    _widgetDinle();
+  }
+
+  /// Bildirime dokunulup uygulama açıldığında.
+  void _bildirimden() {
+    final v = push.acilacakEkran.value;
+    if (v == null || !mounted) return;
+    push.acilacakEkran.value = null;
+    _ekranaGit(context, '${v['ekran'] ?? ''}');
+  }
+
+  /// Ana ekran widget'ına dokunulduğunda. URI biçimi: `midas://<ekran>`
+  Future<void> _widgetDinle() async {
+    HomeWidget.widgetClicked.listen((uri) {
+      if (uri != null && mounted) _ekranaGit(context, uri.host);
+    });
+    try {
+      final ilk = await HomeWidget.initiallyLaunchedFromHomeWidget();
+      if (ilk != null && mounted) _ekranaGit(context, ilk.host);
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     sekme.removeListener(_degisti);
+    push.acilacakEkran.removeListener(_bildirimden);
     super.dispose();
   }
 

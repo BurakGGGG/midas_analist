@@ -219,6 +219,13 @@ class Api {
           '/hesap/parola', {'eski': eski, 'yeni': yeni},
           jeton: jeton, uzun: true));
 
+  Future<Map<String, dynamic>> widgetVeri(
+          List<Pozisyon> pozlar, double sermaye) async =>
+      Map<String, dynamic>.from(await _post('/widget', {
+        'pozisyonlar': pozlar.map((p) => p.toJson()).toList(),
+        'sermaye': sermaye,
+      }, uzun: true));
+
   // ── alıştırma kum havuzu
   Future<Map<String, dynamic>> alistirmaGorevler() async =>
       Map<String, dynamic>.from(await _get('/alistirma/gorevler', uzun: true));

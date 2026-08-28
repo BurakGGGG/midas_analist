@@ -8,6 +8,7 @@ import 'servis/hesap.dart';
 import 'servis/kilit.dart';
 import 'servis/push.dart';
 import 'servis/alistirma.dart';
+import 'servis/widget_veri.dart';
 import 'ekran/kabuk.dart';
 import 'ekran/kilit.dart';
 import 'tema.dart';
@@ -24,6 +25,9 @@ Future<void> main() async {
   // Firebase yoksa sessizce kapalı kalır; uygulama push'suz çalışır.
   // await edilmiyor: izin diyaloğu ve ağ turu açılışı geciktirmemeli.
   unawaited(push.baslat());
+  // Ana ekran widget'ları: açılışta bir kez tazele, sonra 15 dakikalık
+  // arka plan işini kur. await edilmiyor — ağ turu açılışı geciktirmemeli.
+  unawaited(WidgetVeri.baslat());
   // Depo her değiştiğinde geciktirmeli bulut yedeği. Girişli değilse
   // dinleyici hiçbir şey yapmaz — ağ isteği de yok.
   hesap.otomatikBasla();
