@@ -398,12 +398,27 @@ def gun_ozeti(tarih: str, adaylar: list, sermaye: float) -> dict:
              "maliyet": (a.pozisyon.maliyet if a.pozisyon else 0.0),
              "risk_tl": (a.pozisyon.risk_tl if a.pozisyon else 0.0),
              "uyari": (a.pozisyon.uyari if a.pozisyon else ""),
+             # Ölçülmüş tipik tutma süresi. Emri veren kişi "bunu ne
+             # kadar tutacağım" sorusunu ALIM ANINDA sormalı; sonradan
+             # sorulduğunda cevap çoktan duygusal oluyor.
+             "vade": getattr(a, "vade", ""),
              # Gün özeti taramadan AYRI bir ekran; karantina orada da
              # görünmezse kullanıcı zayıf sicilli sinyali onaylanmış sanır.
              "karantina": [x for x in (a.sinyaller or []) if x in _onerilmeyen],
              "onerilir": bool([x for x in (a.sinyaller or [])
                                if x not in _onerilmeyen])}
             for a in adaylar if a.sinyaller][:10],
+        # Sinyal YOKSA sistem eskiden susuyordu. Oysa "bugün al" ile
+        # "hiçbir şey yok" arasında kalan bir alan var: tek koşulu
+        # eksik hisseler. Kullanıcı asıl orada bekliyor.
+        "yaklasanlar": [
+            {"sembol": a.sembol, "fiyat": a.fiyat,
+             "strateji": a.yakinlik["strateji"],
+             "mesaj": a.yakinlik["mesaj"],
+             "karsilanan": a.yakinlik["karsilanan"],
+             "toplam": a.yakinlik["toplam"]}
+            for a in adaylar
+            if not a.sinyaller and a.yakinlik and a.yakinlik.get("yakin")][:8],
     }
 
     # Endeks

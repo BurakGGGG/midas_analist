@@ -66,6 +66,27 @@ class Strateji:
     azami_tutma: int = 15    # bu kadar günde çıkmadıysa zorla çık
     atr_stop_kat: float = 2.0
     atr_hedef_kat: float = 3.5
+    # BACKTESTTE ÖLÇÜLEN medyan tutma süresi (iş günü). `azami_tutma` bir
+    # TAVAN, bu ise gerçekte ne kadar sürdüğü — ikisi çok farklı: kirilim
+    # tavanı 25 gün ama tipik olarak 10 günde bitiyor.
+    #
+    # "Bu hafta mı, bu ay mı" sorusunu bu sayı cevaplıyor. 28 Ağustos
+    # 2026'da 99 hisse x 800 gün üzerinde ölçüldü.
+    tipik_tutma: int = 0
+
+    @property
+    def vade(self) -> str:
+        """Tutma süresinin insan diliyle karşılığı."""
+        g = self.tipik_tutma
+        if g <= 0:
+            return ""
+        if g <= 5:
+            return "birkaç gün"
+        if g <= 10:
+            return "1-2 hafta"
+        if g <= 20:
+            return "2-4 hafta"
+        return "bir aydan uzun"
 
 
 def _trend_giris(g: pd.DataFrame) -> pd.Series:
@@ -112,19 +133,19 @@ STRATEJILER: dict[str, Strateji] = {
         ad="trend",
         aciklama="Yükselen trendde geri çekilme alımı (pullback)",
         giris=_trend_giris, cikis=_trend_cikis,
-        azami_tutma=20, atr_stop_kat=2.0, atr_hedef_kat=4.0,
+        azami_tutma=20, atr_stop_kat=2.0, atr_hedef_kat=4.0, tipik_tutma=9,
     ),
     "tepki": Strateji(
         ad="tepki",
         aciklama="Trend içi aşırı satım tepkisi (RSI2 mean-reversion)",
         giris=_tepki_giris, cikis=_tepki_cikis,
-        azami_tutma=6, atr_stop_kat=2.5, atr_hedef_kat=2.5,
+        azami_tutma=6, atr_stop_kat=2.5, atr_hedef_kat=2.5, tipik_tutma=4,
     ),
     "kirilim": Strateji(
         ad="kirilim",
         aciklama="20 günlük zirvenin hacimli kırılması (breakout)",
         giris=_kirilim_giris, cikis=_kirilim_cikis,
-        azami_tutma=25, atr_stop_kat=2.5, atr_hedef_kat=5.0,
+        azami_tutma=25, atr_stop_kat=2.5, atr_hedef_kat=5.0, tipik_tutma=10,
     ),
 }
 

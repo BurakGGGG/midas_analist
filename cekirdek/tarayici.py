@@ -15,6 +15,33 @@ from .risk import RiskAyarlari, pozisyon_hesapla, Pozisyon
 from .strateji import Filtreler, skorla, STRATEJILER
 
 
+def _yakinlik_ozeti(g) -> dict | None:
+    """Sinyale yakınlık. Hesap patlarsa None — tarama çökmemeli."""
+    try:
+        from . import yakinlik as _y
+        return _y.ozet(g)
+    except Exception:
+        return None
+
+
+def _vade(sinyaller: list) -> str:
+    """Sinyal veren stratejinin ölçülmüş tipik tutma süresi.
+
+    Birden çok sinyal varsa EN UZUNU yazılır: kullanıcı pozisyonu ne
+    kadar taşıyacağını planlarken kısa olana göre planlarsa erken çıkar.
+    """
+    from .strateji import STRATEJILER
+    vadeler = [STRATEJILER[a].tipik_tutma for a in (sinyaller or [])
+               if a in STRATEJILER]
+    if not vadeler:
+        return ""
+    en_uzun = max(vadeler)
+    for st in STRATEJILER.values():
+        if st.tipik_tutma == en_uzun:
+            return st.vade
+    return ""
+
+
 @dataclass
 class Aday:
     sembol: str
@@ -34,6 +61,12 @@ class Aday:
     kalite: float
     pozisyon: Pozisyon | None = None
     elendi: str = ""
+    # Sinyal YOKSA bile "ne kadar uzakta" bilgisi. Sistem her gün ya
+    # "AL" diyordu ya susuyordu; arada koca bir alan var ve kullanıcı
+    # orada yaşıyor (bkz. cekirdek/yakinlik.py).
+    yakinlik: dict | None = None
+    # Sinyal VARSA ölçülmüş tipik tutma süresi — "bu hafta mı, bu ay mı".
+    vade: str = ""
 
     def sozluk(self) -> dict:
         d = asdict(self)
@@ -79,6 +112,8 @@ def tara(
             sma200_ustu=r["sma200_ustu"], tl_hacim=r["tl_hacim"],
             trend=r["trend"], momentum=r["momentum"],
             zamanlama=r["zamanlama"], kalite=r["kalite"],
+            yakinlik=_yakinlik_ozeti(g),
+            vade=_vade(r["sinyaller"]),
         )
 
         uygun, sebep = filtre.gecer_mi(g)

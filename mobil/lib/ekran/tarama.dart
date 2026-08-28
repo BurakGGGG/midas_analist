@@ -235,6 +235,11 @@ class _TaramaDurum extends State<TaramaEkran> {
     final adet = ((poz?['adet'] as num?) ?? 0).toInt();
     final alinabilir = adet >= 1;
     final sinyaller = (a['sinyaller'] as List?) ?? [];
+    final vade = (a['vade'] as String?) ?? '';
+    // Sinyal yoksa "ne kadar uzakta" bilgisi. Sinyal VARSA gösterilmez:
+    // zaten sinyal var, yakınlık artık haber değil.
+    final yakinlik = a['yakinlik'] as Map<String, dynamic>?;
+    final yakin = sinyaller.isEmpty && (yakinlik?['yakin'] as bool? ?? false);
 
     return Kutu(
       tikla: () => Navigator.push(c,
@@ -301,6 +306,52 @@ class _TaramaDurum extends State<TaramaEkran> {
               ),
             ],
           ),
+          // Tipik tutma süresi — "aldım, ne kadar tutacağım" sorusunun
+          // cevabı ALIM ANINDA verilmeli. Sonradan sorulduğunda cevap
+          // artık duygusal oluyor.
+          if (vade.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.schedule_sharp,
+                    size: 13, color: Theme.of(c).colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text('tipik tutma: $vade',
+                    style: Theme.of(c).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(c).colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ],
+          if (yakin) ...[
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.radar_sharp, size: 14, color: sem.uyari),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'sinyale yakın · ${yakinlik!['strateji']} '
+                        '${yakinlik['karsilanan']}/${yakinlik['toplam']}',
+                        style: TextStyle(
+                            color: sem.uyari,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12),
+                      ),
+                      const SizedBox(height: 2),
+                      Text('${yakinlik['mesaj']}',
+                          style: Theme.of(c).textTheme.bodySmall?.copyWith(
+                              height: 1.4,
+                              color: Theme.of(c).colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (poz != null) ...[
             const SizedBox(height: 12),
             const Divider(),

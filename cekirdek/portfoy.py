@@ -114,7 +114,21 @@ def kontrol(gun: int = 400) -> list[dict]:
         else:
             aksiyon = "TUT"
             mesafe = (fiyat - p.stop) / fiyat * 100
-            aciklama = f"stop'a %{mesafe:.1f}, hedefe %{(p.hedef - fiyat) / fiyat * 100:.1f}"
+            hedef_mesafe = (p.hedef - fiyat) / fiyat * 100
+            aciklama = f"stop'a %{mesafe:.1f}, hedefe %{hedef_mesafe:.1f}"
+            # "Daha ne kadar?" — kullanıcının pozisyon açtıktan sonra
+            # sorduğu ilk soru bu. `azami_tutma` bir tavan; cevabı veren
+            # backtestte ÖLÇÜLEN medyan süre (strateji.tipik_tutma).
+            kalan = st.tipik_tutma - gun_sayisi if st.tipik_tutma else 0
+            if kalan > 0:
+                aciklama += f" · tipik olarak {kalan} iş günü daha"
+            elif kalan == 0:
+                aciklama += " · tipik süre bugün doluyor"
+            elif st.tipik_tutma:
+                # Süre aşıldı ama kural henüz çıkış demedi: bu bir uyarı
+                # değil, bilgi — kazananlar zaten ortalamayı aşanlardır.
+                aciklama += (f" · tipik süreyi {-kalan} gün geçti "
+                             f"({gun_sayisi}. gün, tipik {st.tipik_tutma})")
 
         # kâr varsa stop'u başabaşa çekme önerisi (risksiz hale getirme)
         oneri = ""
@@ -124,9 +138,22 @@ def kontrol(gun: int = 400) -> list[dict]:
             if yeni_stop > p.stop * 1.005:
                 oneri = f"stop'u {p.stop:.2f} → {yeni_stop:.2f} yukarı çek (iz süren stop)"
 
+        # Çıkışa yakınlık — "SAT" dendiği gün öğrenmek geç kalmaktır.
+        # %2: bir BIST hissesinin tek günde rahatça aldığı yol.
+        yaklasan = ""
+        if aksiyon == "TUT":
+            if (fiyat - p.stop) / fiyat * 100 <= 2.0:
+                yaklasan = "stop'a yaklaştı"
+            elif (p.hedef - fiyat) / fiyat * 100 <= 2.0:
+                yaklasan = "hedefe yaklaştı"
+            elif st.tipik_tutma and gun_sayisi > st.tipik_tutma:
+                yaklasan = "tipik süreyi geçti"
+
         sonuc.append({
             "poz": p, "fiyat": fiyat, "kar": kar, "kar_yuzde": kar_y,
             "aksiyon": aksiyon, "aciklama": aciklama, "oneri": oneri,
+            "yaklasan": yaklasan, "vade": st.vade,
+            "tipik_tutma": st.tipik_tutma,
             "gun": gun_sayisi, "rsi": float(s["RSI14"]),
             "gunluk_degisim": float(s["Close"] / g["Close"].iloc[-2] - 1) * 100,
         })

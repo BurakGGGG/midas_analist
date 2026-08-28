@@ -336,3 +336,70 @@ def test_uzun_yoklama_zaman_asimini_buyutur(monkeypatch):
     monkeypatch.setattr(telegram, "_cagir", sahte)
     telegram.komutlari_oku(0, bekle=45)
     assert yakalanan["urlopen"] > yakalanan["telegram"]
+
+
+# ═══════════════════════════════════════════════ vade ve yaklaşanlar
+# "Bugün al" ile "hiçbir şey yok" arasındaki alanı anlatan iki ekleme:
+# sinyalin tipik tutma süresi ve tek koşulu eksik hisseler.
+
+def _ozet_yaklasanli(sinyal_var: bool = False) -> dict:
+    return {
+        "tarih": "2026-08-28", "endeks_degisim": -0.4,
+        "yukselen": 38, "dusen": 55,
+        "sinyal_veren": ([{"sembol": "EUPWR", "sinyaller": ["trend"],
+                           "skor": 71, "fiyat": 12.4, "onerilir": True,
+                           "vade": "1-2 hafta"}] if sinyal_var else []),
+        "yaklasanlar": [
+            {"sembol": "SOKM", "strateji": "trend", "karsilanan": 3,
+             "toplam": 4, "mesaj": "EMA20'ye %0,8 gerilemesi gerekiyor"},
+            {"sembol": "ENERY", "strateji": "kirilim", "karsilanan": 3,
+             "toplam": 4, "mesaj": "tek eksik: hacim teyidi"},
+        ],
+    }
+
+
+def test_vade_sinyal_satirinda_gorunur():
+    m = bildirim.gunluk_ozet(_ozet_yaklasanli(sinyal_var=True), {})
+    assert "tipik tutma: 1-2 hafta" in m
+
+
+def test_yaklasanlar_mesaja_giriyor():
+    m = bildirim.gunluk_ozet(_ozet_yaklasanli(), {})
+    assert "2 hisse sinyale yakın" in m
+    assert "SOKM" in m and "ENERY" in m
+
+
+def test_yaklasan_sinyal_sanilmamali():
+    """En pahalı yanılgı: izleme listesini alım listesi sanmak."""
+    m = bildirim.gunluk_ozet(_ozet_yaklasanli(), {})
+    assert "sinyal DEĞİL" in m
+
+
+def test_yaklasanlar_bos_ise_blok_hic_cikmaz():
+    o = _ozet_yaklasanli()
+    o["yaklasanlar"] = []
+    m = bildirim.gunluk_ozet(o, {})
+    assert "sinyale yakın" not in m
+    assert "Bugün sinyal yok" in m
+
+
+def test_push_sinyal_yokken_yaklasanlari_soyler():
+    bas, govde = bildirim.gunluk_push(_ozet_yaklasanli())
+    assert "SOKM" in govde and "yakın 2" in govde
+
+
+def test_push_sinyal_varken_yaklasanlari_one_cikarmaz():
+    """Sinyal varken push'un konusu sinyaldir; yaklaşan gürültü olur."""
+    _, govde = bildirim.gunluk_push(_ozet_yaklasanli(sinyal_var=True))
+    assert "EUPWR" in govde and "SOKM" not in govde
+
+
+def test_eski_ozet_yeni_alanlarsiz_calisir():
+    """Sunucudaki eski kayıtlarda `yaklasanlar` ve `vade` yok."""
+    eski = {"tarih": "2026-01-02", "endeks_degisim": 0.3,
+            "yukselen": 50, "dusen": 40,
+            "sinyal_veren": [{"sembol": "THYAO", "sinyaller": ["tepki"],
+                              "skor": 60, "fiyat": 300.0, "onerilir": True}]}
+    m = bildirim.gunluk_ozet(eski, {})
+    assert "THYAO" in m and "tipik tutma" not in m
+    assert bildirim.gunluk_push(eski)[1]

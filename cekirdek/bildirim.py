@@ -53,9 +53,12 @@ def gunluk_ozet(ozet: dict, siniflar: dict | None = None) -> str:
     if onerilen:
         s.append(f"🎯 <b>{len(onerilen)} sinyal</b>")
         for x in onerilen[:5]:
-            s.append(f"   <b>{kacis(x['sembol'])}</b> "
+            satir = (f"   <b>{kacis(x['sembol'])}</b> "
                      f"{kacis(x.get('sinyaller', []) and x['sinyaller'][0] or '')} "
                      f"· skor {x.get('skor', 0):.0f} · {x.get('fiyat', 0):.2f} ₺")
+            if x.get("vade"):
+                satir += f"\n      tipik tutma: {kacis(x['vade'])}"
+            s.append(satir)
     elif karantinali:
         # "Sinyal yok" ile "sinyal var ama önerilmiyor" farklı şeyler.
         # İkincisini gizlemek, kullanıcıyı bilgisiz bırakır.
@@ -63,6 +66,20 @@ def gunluk_ozet(ozet: dict, siniflar: dict | None = None) -> str:
                  f"karantinadaki stratejilerden geldi.")
     else:
         s.append("😴 <b>Bugün sinyal yok.</b> Nakitte beklemek de bir pozisyondur.")
+
+    # ── yaklaşanlar
+    # "Sinyal yok" bir sonuç, ama tam bir cevap değil. Tek koşulu eksik
+    # hisseleri görmek, kullanıcıyı sinyal gelmeden hazırlıklı kılıyor —
+    # ve sinyal geldiğinde hisse yabancı gelmiyor.
+    yaklasanlar = ozet.get("yaklasanlar") or []
+    if yaklasanlar:
+        s.append("")
+        s.append(f"👀 <b>{len(yaklasanlar)} hisse sinyale yakın</b>")
+        for x in yaklasanlar[:4]:
+            s.append(f"   <b>{kacis(x['sembol'])}</b> "
+                     f"({kacis(x['strateji'])} {x['karsilanan']}/{x['toplam']}) "
+                     f"· {kacis(x['mesaj'])}")
+        s.append("   <i>Bunlar sinyal DEĞİL — izleme listesi.</i>")
 
     # ── karantina durumu
     if siniflar:
@@ -108,6 +125,10 @@ def sabah_hatirlatici(plan: dict) -> str:
         s.append(f"   stop <b>{e.get('stop', 0):.2f}</b> · "
                  f"hedef <b>{e.get('hedef', 0):.2f}</b> · "
                  f"risk {e.get('risk_tl', 0):.0f} ₺")
+        # Emri verirken tutma süresini bilmek, çıkışı fiyata değil plana
+        # bağlar. Sonradan sorulduğunda cevap artık kâr/zarara bakıyor.
+        if e.get("vade"):
+            s.append(f"   tipik tutma: {kacis(e['vade'])}")
         tavan = e.get("tavan_fiyat") or 0
         if tavan:
             s.append(f"   {tavan:.2f} ₺ üstünde açarsa bu emri GEÇ (tavan)")
@@ -160,7 +181,12 @@ def gunluk_push(ozet: dict) -> tuple[str, str]:
             govde += f" +{len(onerilen) - 3}"
         govde += " — yarın açılışta"
     else:
-        govde = "Bugün önerilen sinyal yok. Nakitte beklemek de bir pozisyon."
+        yak = ozet.get("yaklasanlar") or []
+        if yak:
+            adlar = ", ".join(x["sembol"] for x in yak[:3])
+            govde = f"Sinyal yok. Sinyale yakın {len(yak)}: {adlar}"
+        else:
+            govde = "Bugün önerilen sinyal yok. Nakitte beklemek de bir pozisyon."
     return bas, govde
 
 

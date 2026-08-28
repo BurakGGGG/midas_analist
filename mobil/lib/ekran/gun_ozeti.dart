@@ -211,6 +211,15 @@ class _GunOzetiDurum extends State<GunOzetiEkran> {
                                       ?.copyWith(color: kar.isEmpty
                                           ? sem.aksan : sem.uyari));
                             }),
+                            // Tipik tutma süresi. Emri sabah verirken
+                            // "ne kadar tutacağım" bilinmezse çıkış
+                            // kararı fiyata bakılarak veriliyor.
+                            if ((s['vade'] as String?)?.isNotEmpty ?? false)
+                              Text('tipik tutma: ${s['vade']}',
+                                  style: Theme.of(c).textTheme.bodySmall
+                                      ?.copyWith(fontSize: 11,
+                                          color: Theme.of(c)
+                                              .colorScheme.onSurfaceVariant)),
                           ],
                         ),
                       ),
@@ -221,6 +230,51 @@ class _GunOzetiDurum extends State<GunOzetiEkran> {
                         Icon(Icons.block_sharp, size: 15, color: sem.uyari),
                       ],
                     ]),
+                  ),
+                )),
+          ],
+          // "Sinyal yok" günlerde ekran boş kalıyordu. Tek koşulu eksik
+          // hisseler ALIM LİSTESİ DEĞİL — izleme listesi; o yüzden ayrı
+          // başlık, uyarı rengi ve altında açık uyarı cümlesi.
+          if ((o['yaklasanlar'] as List?)?.isNotEmpty ?? false) ...[
+            const Baslik('Sinyale yakın', alt: 'izleme listesi — alım değil'),
+            ...(o['yaklasanlar'] as List).map((y) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Kutu(
+                    ic: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    tikla: () => Navigator.push(c, MaterialPageRoute(
+                        builder: (_) => HisseEkran('${y['sembol']}'))),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.radar_sharp, size: 16, color: sem.uyari),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(children: [
+                                Text('${y['sembol']}',
+                                    style: Theme.of(c).textTheme.titleMedium),
+                                const SizedBox(width: 8),
+                                Rozet('${y['strateji']} '
+                                    '${y['karsilanan']}/${y['toplam']}',
+                                    renk: sem.uyari),
+                              ]),
+                              const SizedBox(height: 3),
+                              Text('${y['mesaj']}',
+                                  style: Theme.of(c).textTheme.bodySmall
+                                      ?.copyWith(height: 1.4,
+                                          color: Theme.of(c)
+                                              .colorScheme.onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('${tl(y['fiyat'] as num?)} ₺',
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ],
+                    ),
                   ),
                 )),
           ],

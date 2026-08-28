@@ -204,8 +204,23 @@ class _PortfoyDurum extends State<PortfoyEkran> {
                   renk: sat ? sem.eksi : sem.arti, dolu: sat),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('${p['sembol']}',
-                    style: Theme.of(c).textTheme.titleMedium),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text('${p['sembol']}',
+                          style: Theme.of(c).textTheme.titleMedium),
+                    ),
+                    // Stopa/hedefe yaklaşma, SAT'tan önceki uyarı. Bunu
+                    // ancak "SAT" çıktığı gün görmek, kararı fiyat çoktan
+                    // hareket ettikten sonra almak demek.
+                    if (!sat && '${p['yaklasan'] ?? ''}'.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Rozet('${p['yaklasan']}', renk: sem.uyari),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -229,7 +244,10 @@ class _PortfoyDurum extends State<PortfoyEkran> {
               _mini(c, '${tl(p['kar'] as num?)} ₺', 'kâr/zarar',
                   renk: sem.yon(karY)),
               _mini(c, yzd(karY), 'getiri', renk: sem.yon(karY)),
-              _mini(c, '${p['gun']} gün', 'tutuluyor'),
+              _mini(c, '${p['gun']} gün',
+                  ((p['tipik_tutma'] as num?) ?? 0) > 0
+                      ? 'tutuluyor · tipik ${p['tipik_tutma']}'
+                      : 'tutuluyor'),
             ],
           ),
           const SizedBox(height: 10),
