@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:convert';
 
+import 'package:midas_analist/ekran/alistirma.dart';
 import 'package:midas_analist/ekran/hesap.dart';
 import 'package:midas_analist/ekran/portfoy.dart';
 import 'package:midas_analist/ekran/tarama.dart';
@@ -23,6 +24,7 @@ import 'package:midas_analist/servis/api.dart';
 import 'package:midas_analist/ekran/kilit.dart';
 import 'package:midas_analist/ekran/sermaye.dart';
 import 'package:midas_analist/ekran/sozluk.dart';
+import 'package:midas_analist/servis/alistirma.dart' show kum;
 import 'package:midas_analist/servis/kilit.dart' show kilit;
 import 'package:midas_analist/parca/kart.dart';
 import 'package:midas_analist/servis/depo.dart';
@@ -79,6 +81,30 @@ class _SahteApi extends Api {
     double azamiPozisyon = 35, int adet = 40,
   }) async =>
       _oku('tarama_veri.json');
+
+  @override
+  Future<Map<String, dynamic>> alistirmaGorevler() async => {
+        'surum': 1,
+        'baslangic_bakiye': 10000.0,
+        'gorevler': [
+          {
+            'kod': 'g03', 'tur': 'sayi',
+            'baslik': 'Stop: nereden çıkacağını önceden söylemek',
+            'amac': 'Stopu duyguya değil oynaklığa göre koymak.',
+            'anlatim': 'STOP, "buraya gelirse yanıldığımı kabul ediyorum" '
+                'dediğin fiyat. Alımdan ÖNCE konur, çünkü sonra konamaz: '
+                'fiyat düşerken her seviye "biraz daha bekleyeyim" gibi '
+                'görünür.\n\nNereye konur? Hissenin NORMAL GÜNLÜK '
+                'DALGALANMASININ DIŞINA. Bunu ölçen sayı ATR.',
+            'soru': 'GESAN 92,20 ₺\'den aldın. ATR 3,70 ₺. Stopu 2 ATR '
+                'altına koyarsan kaç lira olur?',
+            'dogru': 84.80, 'tolerans': 0.10, 'birim': '₺',
+            'ipucu': 'giriş − (2 × ATR)',
+            'aciklama': '92,20 − 7,40 = 84,80 ₺.',
+            'ders': 'd805', 'secenekler': [],
+          },
+        ],
+      };
 
   @override
   Future<Map<String, dynamic>> portfoyKontrol(
@@ -356,5 +382,37 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/portfoy.png'));
+  });
+
+  testWidgets('alistirma mod secimi', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await kum.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+
+    await t.binding.setSurfaceSize(const Size(420, 900));
+    await t.pumpWidget(_sarmala(const AlistirmaEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/alistirma_mod.png'));
+  });
+
+  testWidgets('alistirma gorev', (t) async {
+    SharedPreferences.setMockInitialValues({
+      'alistirma_v1':
+          '{"mod":"gecmis","tarih":"2026-04-28","bakiye":10000.0,'
+          '"pozisyonlar":[],"kapali":[],"gorevler":["g01","g02"]}',
+    });
+    await depo.yukle();
+    await kum.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+
+    await t.binding.setSurfaceSize(const Size(420, 1500));
+    await t.pumpWidget(_sarmala(const AlistirmaEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/alistirma_gorev.png'));
   });
 }

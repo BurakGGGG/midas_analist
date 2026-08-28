@@ -5,6 +5,7 @@ import '../parca/kart.dart';
 import '../tema.dart';
 import 'ogret.dart';
 import 'mufredat.dart';
+import 'alistirma.dart';
 
 class IlerlemeEkran extends StatefulWidget {
   const IlerlemeEkran({super.key});
@@ -288,6 +289,19 @@ class _IlerlemeDurum extends State<IlerlemeEkran> {
                 icon: const Icon(Icons.menu_book_sharp, size: 18),
                 label: Text('Müfredat · ${d.dersOkunan}/${d.dersToplam} ders'),
                 style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46)),
+              ),
+              const SizedBox(height: 9),
+              // Müfredatın hemen ALTINDA: okumakla yapmak farklı şeyler ve
+              // ikisi yan yana durmalı. Dersi okuyup hemen uygulayabilmek,
+              // eğitimin ayrı bir iş gibi durmasını engelliyor.
+              OutlinedButton.icon(
+                onPressed: () => Navigator.push(c,
+                        MaterialPageRoute(builder: (_) => const AlistirmaEkran()))
+                    .then((_) => setState(() {})),
+                icon: const Icon(Icons.science_sharp, size: 18),
+                label: const Text('Alıştırma · sanal parayla dene'),
+                style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46)),
               ),
             ],

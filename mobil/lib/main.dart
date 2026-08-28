@@ -7,6 +7,7 @@ import 'servis/egitmen.dart';
 import 'servis/hesap.dart';
 import 'servis/kilit.dart';
 import 'servis/push.dart';
+import 'servis/alistirma.dart';
 import 'ekran/kabuk.dart';
 import 'ekran/kilit.dart';
 import 'tema.dart';
@@ -19,6 +20,7 @@ Future<void> main() async {
   await hesap.yukle();
   // Kurulu bir PIN varsa uygulama KİLİTLİ açılır.
   await kilit.yukle();
+  await kum.yukle();
   // Firebase yoksa sessizce kapalı kalır; uygulama push'suz çalışır.
   // await edilmiyor: izin diyaloğu ve ağ turu açılışı geciktirmemeli.
   unawaited(push.baslat());

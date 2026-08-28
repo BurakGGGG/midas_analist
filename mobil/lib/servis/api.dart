@@ -219,6 +219,26 @@ class Api {
           '/hesap/parola', {'eski': eski, 'yeni': yeni},
           jeton: jeton, uzun: true));
 
+  // ── alıştırma kum havuzu
+  Future<Map<String, dynamic>> alistirmaGorevler() async =>
+      Map<String, dynamic>.from(await _get('/alistirma/gorevler', uzun: true));
+
+  Future<Map<String, dynamic>> alistirmaGun(String sembol,
+          {String? tarih}) async =>
+      Map<String, dynamic>.from(await _get('/alistirma/gun', uzun: true,
+          sorgu: {'sembol': sembol, if (tarih != null) 'tarih': tarih}));
+
+  Future<Map<String, dynamic>> alistirmaIlerlet(String tarih,
+          List<Map<String, dynamic>> pozisyonlar, List<String> semboller) async =>
+      Map<String, dynamic>.from(await _post('/alistirma/ilerlet', {
+        'tarih': tarih, 'pozisyonlar': pozisyonlar, 'semboller': semboller,
+      }, uzun: true));
+
+  Future<Map<String, dynamic>> alistirmaAdet(
+          double bakiye, double fiyat, double stop) async =>
+      Map<String, dynamic>.from(await _get('/alistirma/adet',
+          sorgu: {'bakiye': bakiye, 'fiyat': fiyat, 'stop': stop}));
+
   Future<Map<String, dynamic>> cihazKaydet(
           String oturum, String pushJetonu, String platform) async =>
       Map<String, dynamic>.from(await _post(

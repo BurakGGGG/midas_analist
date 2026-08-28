@@ -40,6 +40,10 @@ class Hesap extends ChangeNotifier {
     'para_hareketleri_v1',
     'egitmen_ilerleme_v1',
     'egitmen_ders_v1',
+    // Alıştırma kum havuzu: sanal bakiye, pozisyonlar ve görev
+    // ilerlemesi. Yeniden üretilemez — telefonu değiştirince görevleri
+    // baştan yapmak istemezsin.
+    'alistirma_v1',
   ];
 
   String? jeton;
