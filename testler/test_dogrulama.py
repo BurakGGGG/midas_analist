@@ -170,3 +170,34 @@ def test_tcmb_tatilde_geriye_yurur(monkeypatch):
 def test_tcmb_hic_ulasilamazsa_bos(monkeypatch):
     monkeypatch.setattr(d, "_cek", lambda *a, **k: None)
     assert d.tcmb_kur() == {}
+
+
+# ── sayı biçimi ────────────────────────────────────────────────────────────
+#
+# Rejim notları doğrudan kullanıcıya gidiyor: Makro ekranı, Bugün kartı,
+# Telegram ve push. Uygulamanın geri kalanı Türkçe virgül kullanırken bu
+# notlardan nokta çıkıyordu ve aynı ekranda "VIX 14.6" ile "14,63" yan
+# yana duruyordu.
+
+def test_rejim_notlari_turkce_ondalik_kullanir():
+    from cekirdek.makro import _sayi
+    assert _sayi(14.63) == "14,6"
+    assert _sayi(1.75, 2) == "1,75"
+    assert _sayi(12.4, 0) == "12"
+    assert "." not in _sayi(1234.5)
+
+
+def test_sayi_bozuk_girdide_cokmez():
+    from cekirdek.makro import _sayi
+    for v in (None, "abc", float("nan")):
+        assert isinstance(_sayi(v), str)
+
+
+def test_rejim_notlarinda_nokta_ondalik_yok():
+    """Not şablonlarında ':.1f' kalırsa nokta geri gelir ve kimse fark
+    etmez — metinler ekranda küçük ve seyrek okunuyor."""
+    from pathlib import Path
+    kaynak = Path(__file__).resolve().parent.parent / "cekirdek" / "makro.py"
+    for satir in kaynak.read_text(encoding="utf-8").splitlines():
+        if "notlar.append" in satir:
+            assert ":.0f}" not in satir and ":.1f}" not in satir, satir.strip()

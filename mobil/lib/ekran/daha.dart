@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../parca/kart.dart';
+import '../servis/egitmen.dart';
 import '../tema.dart';
 import 'makro.dart';
 import 'sektor.dart';
@@ -36,8 +37,11 @@ class DahaEkran extends StatelessWidget {
       (Icons.menu_book_sharp, 'Karar defterin',
           'Senin kararların — sistemi takip mi ettin, kendi fikrin mi',
           const DefterEkran()),
+      // Sayılar müfredattan okunuyor: sabit yazıldığında iki kez eskidi
+      // (65 → 72 → 76) ve ikisini de ancak gözle bakınca fark ettik.
       (Icons.school_sharp, 'Eğitmen',
-          '13 modül, 76 ders · günlük ders + pekiştirme',
+          '${egitmen.moduller.length} modül, ${egitmen.tumDersler.length} ders'
+          ' · günlük ders + pekiştirme',
           const IlerlemeEkran()),
       // Eğitmenin hemen ALTINDA: ikisi aynı soruya iki farklı sürede
       // cevap veriyor. Sözlük 30 saniye, ders 6-9 dakika.

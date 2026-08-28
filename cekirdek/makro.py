@@ -115,6 +115,20 @@ def durum(gun: int = 400, onbellek_saat: float = 6.0) -> MakroDurum:
                       pd.Timestamp.now().strftime("%Y-%m-%d"))
 
 
+def _sayi(v, basamak: int = 1) -> str:
+    """Türkçe ondalık ayracı ile sayı.
+
+    NEDEN VAR: bu notlar doğrudan kullanıcıya gösteriliyor (Makro ekranı,
+    Bugün kartı, Telegram, push). Uygulamanın geri kalanı virgül
+    kullanırken buradan nokta çıkıyordu ve aynı ekranda "VIX 14.6" ile
+    "14,63" yan yana duruyordu.
+    """
+    try:
+        return f"{float(v):.{basamak}f}".replace(".", ",")
+    except Exception:
+        return "—"
+
+
 def rejim(m: MakroDurum) -> dict:
     """Piyasa rejimi: risk iştahı açık mı, TL baskı altında mı?
 
@@ -125,30 +139,30 @@ def rejim(m: MakroDurum) -> dict:
 
     vix = m.oz("vix")
     if vix:
-        if vix["son"] < 16:   puan += 2; notlar.append(f"VIX {vix['son']:.1f} — küresel risk iştahı açık")
-        elif vix["son"] > 25: puan -= 2; notlar.append(f"VIX {vix['son']:.1f} — küresel korku yüksek")
-        else:                 notlar.append(f"VIX {vix['son']:.1f} — nötr")
+        if vix["son"] < 16:   puan += 2; notlar.append(f"VIX {_sayi(vix['son'])} — küresel risk iştahı açık")
+        elif vix["son"] > 25: puan -= 2; notlar.append(f"VIX {_sayi(vix['son'])} — küresel korku yüksek")
+        else:                 notlar.append(f"VIX {_sayi(vix['son'])} — nötr")
 
     usd = m.oz("usdtry")
     if usd and np.isfinite(usd["g30"]):
         aylik_enf = m.enflasyon.get("aylik", 1.8)
         if usd["g30"] > aylik_enf * 2:
-            puan -= 2; notlar.append(f"USD/TRY 1 ayda %{usd['g30']:.1f} — TL hızlı değer kaybediyor")
+            puan -= 2; notlar.append(f"USD/TRY 1 ayda %{_sayi(usd['g30'])} — TL hızlı değer kaybediyor")
         elif usd["g30"] < aylik_enf * 0.5:
-            puan += 1; notlar.append(f"USD/TRY 1 ayda %{usd['g30']:.1f} — TL sakin, reel değerleniyor")
+            puan += 1; notlar.append(f"USD/TRY 1 ayda %{_sayi(usd['g30'])} — TL sakin, reel değerleniyor")
         else:
-            notlar.append(f"USD/TRY 1 ayda %{usd['g30']:.1f} — enflasyona paralel seyir")
+            notlar.append(f"USD/TRY 1 ayda %{_sayi(usd['g30'])} — enflasyona paralel seyir")
 
     em, xu = m.oz("em"), m.oz("xu100")
     if em and xu and np.isfinite(em["g90"]) and np.isfinite(xu["g90"]):
         fark = xu["g90"] - em["g90"]
-        if fark > 10:  puan += 1; notlar.append(f"BIST gelişen piyasaları {fark:.0f} puan geçiyor")
-        elif fark < -10: puan -= 1; notlar.append(f"BIST gelişen piyasaların {abs(fark):.0f} puan gerisinde")
+        if fark > 10:  puan += 1; notlar.append(f"BIST gelişen piyasaları {_sayi(fark, 0)} puan geçiyor")
+        elif fark < -10: puan -= 1; notlar.append(f"BIST gelişen piyasaların {_sayi(abs(fark), 0)} puan gerisinde")
 
     abd = m.oz("abd10y")
     if abd and np.isfinite(abd["g90"]):
         if abd["g90"] > 8:
-            puan -= 1; notlar.append(f"ABD 10y faizi 3 ayda %{abd['g90']:.1f} arttı — gelişen piyasalardan çıkış baskısı")
+            puan -= 1; notlar.append(f"ABD 10y faizi 3 ayda %{_sayi(abd['g90'])} arttı — gelişen piyasalardan çıkış baskısı")
 
     if puan >= 3:    ad, aciklama = "RİSK AÇIK", "Momentum ve kırılım stratejileri için elverişli"
     elif puan >= 1:  ad, aciklama = "ılımlı", "Normal işlem, pozisyon boyutunu abartma"

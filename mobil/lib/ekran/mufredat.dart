@@ -99,7 +99,9 @@ class _MufredatDurum extends State<MufredatEkran> {
                 ),
               )),
         ],
-        const Baslik('12 modül'),
+        // Sayı SABİT YAZILMASIN: müfredat büyüdükçe eskiyor ve kimse
+        // fark etmiyor. m13 eklendiğinde bu satır 12'de kalmıştı.
+        Baslik('${egitmen.moduller.length} modül'),
         ...egitmen.moduller.map((m) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _modulKart(c, sem, m),

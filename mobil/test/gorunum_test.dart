@@ -19,6 +19,13 @@ import 'dart:convert';
 import 'package:midas_analist/ekran/alistirma.dart';
 import 'package:midas_analist/ekran/ayarlar.dart';
 import 'package:midas_analist/ekran/defter.dart';
+import 'package:midas_analist/ekran/ders.dart';
+import 'package:midas_analist/ekran/hisse.dart';
+import 'package:midas_analist/ekran/makro.dart';
+import 'package:midas_analist/ekran/mufredat.dart';
+import 'package:midas_analist/ekran/ogren.dart';
+import 'package:midas_analist/ekran/sektor.dart';
+import 'package:midas_analist/ekran/sirket_oku.dart';
 import 'package:midas_analist/ekran/gun_ozeti.dart';
 import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
@@ -31,6 +38,7 @@ import 'package:midas_analist/ekran/kilit.dart';
 import 'package:midas_analist/ekran/sermaye.dart';
 import 'package:midas_analist/ekran/sozluk.dart';
 import 'package:midas_analist/servis/alistirma.dart' show kum;
+import 'package:midas_analist/servis/egitmen.dart' show egitmen;
 import 'package:midas_analist/servis/kilit.dart' show kilit;
 import 'package:midas_analist/parca/kart.dart';
 import 'package:midas_analist/servis/depo.dart';
@@ -90,6 +98,48 @@ class _SahteApi extends Api {
 
   Map<String, dynamic> _ikili(String ad) => Map<String, dynamic>.from(
       (_oku('karne_risk_veri.json')[ad]) as Map);
+
+  Map<String, dynamic> _t(String ad) =>
+      Map<String, dynamic>.from(_oku('tum_veri.json')[ad] as Map);
+
+  @override
+  Future<Map<String, dynamic>> makro({bool grafik = false}) async => _t('makro');
+
+  @override
+  Future<Map<String, dynamic>> sektor() async => _t('sektor');
+
+  @override
+  Future<List<dynamic>> ogrenListe() async =>
+      (_t('ogren')['konular'] ?? []) as List<dynamic>;
+
+  @override
+  Future<Map<String, dynamic>> ogrenKonu(String konu) async => _t('ogrenkonu');
+
+  @override
+  Future<Map<String, dynamic>> egitmenMufredat() async => _t('mufredat');
+
+  @override
+  Future<Map<String, dynamic>> egitmenSorular() async => _t('sorular');
+
+  @override
+  Future<Map<String, dynamic>> dersGorseli(String kod) async => _t('gorsel');
+
+  @override
+  Future<Map<String, dynamic>> hisse(String sembol,
+          {required double sermaye, bool grafik = true}) async =>
+      _t('hisse');
+
+  @override
+  Future<Map<String, dynamic>> yapi(String sembol) async => _t('yapi');
+
+  @override
+  Future<Map<String, dynamic>> sirket(String sembol,
+          {bool sektorKiyas = true}) async =>
+      _t('sirket');
+
+  @override
+  Future<Map<String, dynamic>> egitmenSirketOku(String sembol) async =>
+      _t('sirketoku');
 
   Map<String, dynamic> _defterOzet(String ad) => Map<String, dynamic>.from(
       (_oku('defter_ozet_veri.json')[ad]) as Map);
@@ -516,6 +566,91 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/gun_ozeti.png'));
+  });
+
+  testWidgets('makro', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1600));
+    await t.pumpWidget(_sarmala(const MakroEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/makro.png'));
+  });
+
+  testWidgets('sektor', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1200));
+    await t.pumpWidget(_sarmala(const SektorEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/sektor.png'));
+  });
+
+  testWidgets('ogren', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 900));
+    await t.pumpWidget(_sarmala(const OgrenEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/ogren.png'));
+  });
+
+  testWidgets('mufredat', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1400));
+    await t.pumpWidget(_sarmala(const MufredatEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/mufredat.png'));
+  });
+
+  testWidgets('ders', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await egitmen.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 2200));
+    await t.pumpWidget(_sarmala(const DersEkran('d101')));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/ders.png'));
+  });
+
+  testWidgets('hisse', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 2000));
+    await t.pumpWidget(_sarmala(const HisseEkran('THYAO')));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/hisse.png'));
+  });
+
+  testWidgets('sirket_oku', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1400));
+    await t.pumpWidget(_sarmala(const SirketOkuEkran('THYAO')));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/sirket_oku.png'));
   });
 
   testWidgets('alistirma mod secimi', (t) async {
