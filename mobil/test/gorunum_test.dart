@@ -18,6 +18,8 @@ import 'dart:convert';
 
 import 'package:midas_analist/ekran/alistirma.dart';
 import 'package:midas_analist/ekran/ayarlar.dart';
+import 'package:midas_analist/ekran/defter.dart';
+import 'package:midas_analist/ekran/gun_ozeti.dart';
 import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
 import 'package:midas_analist/ekran/tezler.dart';
@@ -88,6 +90,20 @@ class _SahteApi extends Api {
 
   Map<String, dynamic> _ikili(String ad) => Map<String, dynamic>.from(
       (_oku('karne_risk_veri.json')[ad]) as Map);
+
+  Map<String, dynamic> _defterOzet(String ad) => Map<String, dynamic>.from(
+      (_oku('defter_ozet_veri.json')[ad]) as Map);
+
+  @override
+  Future<Map<String, dynamic>> defter() async => _defterOzet('defter');
+
+  @override
+  Future<Map<String, dynamic>> gunlukOzet({String? tarih}) async =>
+      _defterOzet('ozet');
+
+  @override
+  Future<Map<String, dynamic>> gunlukHaberler({int azami = 25}) async =>
+      const {'haberler': []};
 
   @override
   Future<List<dynamic>> tezSorulari() async => const [
@@ -476,6 +492,30 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/ayarlar.png'));
+  });
+
+  testWidgets('defter', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1500));
+    await t.pumpWidget(_sarmala(const DefterEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/defter.png'));
+  });
+
+  testWidgets('gun ozeti', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1800));
+    await t.pumpWidget(_sarmala(const GunOzetiEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/gun_ozeti.png'));
   });
 
   testWidgets('alistirma mod secimi', (t) async {

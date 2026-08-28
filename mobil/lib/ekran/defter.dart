@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../servis/depo.dart';
 import '../parca/kart.dart';
 import '../tema.dart';
+import 'kabuk.dart';
 
 /// Karar defteri — SENİN sicilin.
 ///
@@ -79,15 +80,30 @@ class _DefterDurum extends State<DefterEkran> {
               const SizedBox(height: 14),
               const Divider(),
               const SizedBox(height: 12),
+              // Sıra bilerek değişti: uygulama içi yol ÖNCE. Eskiden
+              // Telegram başta, uygulama dipnottaydı — oysa kayıt
+              // uygulamanın kendi işi ve push bildirimi geldiğinden beri
+              // Telegram ikincil kanal.
               Text(
                 'Sistem kendi sinyallerini ölçüyor; bu defter SENİN '
                 'kararlarını ölçer. Aradaki fark, seçim becerindir.\n\n'
-                'Kayıtları Telegram botundan girebilirsin:\n'
-                '/aldim THYAO 302 3\n'
-                '/sattim THYAO 315\n\n'
-                'Ya da bir hisse sayfasından "Alım kaydı" ile.',
+                'Kayıt için: Tarama\'dan bir hisseye gir, "Alım kaydı" de.\n\n'
+                'Telegram botunu kullanıyorsan oradan da olur:\n'
+                '/aldim THYAO 302 3   ·   /sattim THYAO 315',
                 style: Theme.of(c).textTheme.bodySmall?.copyWith(
                     color: Theme.of(c).colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 14),
+              // Boş ekran ne yapılacağını söylüyorsa, yapmayı da
+              // sunmalı: metinle yol tarif edip kullanıcıyı kendi
+              // başına bırakmak yarım iş.
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => sekmeyeGit(c, Sekme.tarama),
+                  icon: const Icon(Icons.radar_sharp, size: 18),
+                  label: const Text('TARAMAYA GİT'),
+                ),
               ),
             ],
           ),
