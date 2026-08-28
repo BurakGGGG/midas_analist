@@ -1044,6 +1044,104 @@ def hesap_parola(istek: ParolaIstek,
     return {"degisti": True, "yeniden_giris_gerekli": True}
 
 
+# ══════════════════════════════════════════════════════ alıştırma kum havuzu
+#
+# Durum TELEFONDA: bakiye, pozisyonlar ve görev ilerlemesi orada yaşıyor ve
+# bulut yedeğiyle taşınıyor. Sunucu yalnızca fiyat veriyor ve çıkış
+# kurallarını uyguluyor — API'nin durumsuzluğu korunuyor.
+#
+# Çıkış kurallarının sunucuda olması bilinçli: aynı kurallar backtest'te de
+# var ve İKİ YERDE kopyalanırsa biri sessizce kayar. Alıştırmada stop başka
+# türlü çalışırsa kullanıcı yanlış şey öğrenir.
+
+
+class IlerletIstek(BaseModel):
+    tarih: str
+    pozisyonlar: list[dict] = Field(default_factory=list)
+    semboller: list[str] = Field(default_factory=list)
+
+
+@app.get("/alistirma/gorevler")
+def alistirma_gorevler():
+    """Rehberli görevler. Müfredat gibi bir kez indirilip saklanır."""
+    from cekirdek import alistirma_gorevler as ag
+
+    def akit(g) -> dict:
+        d = guvenli(g.__dict__.copy())
+        for alan in ("anlatim", "aciklama"):
+            if d.get(alan):
+                d[alan] = metin_akit(d[alan])
+        return d
+
+    return {"surum": 1, "baslangic_bakiye": __import__(
+                "cekirdek.alistirma", fromlist=["x"]).BASLANGIC_BAKIYE,
+            "gorevler": [akit(g) for g in ag.GOREVLER]}
+
+
+@app.get("/alistirma/gun")
+def alistirma_gun(sembol: str, tarih: str | None = None):
+    """Tek günün barı. Tarih işlem günü değilse önceki işlem günü döner."""
+    from cekirdek import alistirma
+    b = alistirma.gun(sembol.upper().strip(), tarih)
+    if b is None:
+        raise HTTPException(404, f"{sembol} için {tarih or 'bugün'} verisi yok")
+    return guvenli(b.sozluk())
+
+
+@app.post("/alistirma/ilerlet")
+def alistirma_ilerlet(istek: IlerletIstek):
+    """Bir işlem günü ileri gider ve stop/hedef çalıştı mı söyler.
+
+    Farklı hisselerin işlem takvimi teoride ayrışabilir; bu yüzden yeni
+    tarih, tüm sembollerin bir sonraki gününün EN ERKENİ olarak seçiliyor
+    ve herkes o tarihe hizalanıyor. Aksi halde pozisyonlar farklı günlerde
+    yaşar ve kum havuzunun zamanı tutarsızlaşırdı.
+    """
+    from cekirdek import alistirma
+
+    semboller = list({(p.get("sembol") or "").upper()
+                      for p in istek.pozisyonlar if p.get("sembol")}
+                     | {s.upper() for s in istek.semboller if s})
+    if not semboller:
+        raise HTTPException(400, "en az bir sembol gerekir")
+
+    adaylar = []
+    for sem in semboller:
+        b = alistirma.sonraki_gun(sem, istek.tarih)
+        if b:
+            adaylar.append(b.tarih)
+    if not adaylar:
+        raise HTTPException(404, "ileride işlem günü yok "
+                                 "(geçmiş modunda bugüne ulaştın)")
+    yeni_tarih = min(adaylar)
+
+    fiyatlar, cikislar = {}, []
+    for sem in semboller:
+        b = alistirma.gun(sem, yeni_tarih)
+        if b is None or b.tarih != yeni_tarih:
+            continue
+        fiyatlar[sem] = b.sozluk()
+        for poz in istek.pozisyonlar:
+            if (poz.get("sembol") or "").upper() != sem:
+                continue
+            c = alistirma.cikis_kontrol(poz, b)
+            if c:
+                cikislar.append({"sembol": c.sembol, "fiyat": round(c.fiyat, 4),
+                                 "sebep": c.sebep, "tarih": c.tarih})
+
+    return guvenli({"tarih": yeni_tarih, "fiyatlar": fiyatlar,
+                    "cikislar": cikislar})
+
+
+@app.get("/alistirma/adet")
+def alistirma_adet(bakiye: float, fiyat: float, stop: float,
+                   risk_yuzde: float = 1.5, azami_pozisyon: float = 35.0):
+    """Pozisyon boyutu — uygulamanın gerçek hesabının aynısı."""
+    from cekirdek import alistirma
+    return guvenli(alistirma.adet_oner(bakiye, fiyat, stop,
+                                       risk_yuzde, azami_pozisyon))
+
+
 class CihazIstek(BaseModel):
     jeton: str
     platform: str = ""
