@@ -36,7 +36,7 @@
         <!-- Ana ekran widget'ları. Üçü de aynı veriden besleniyor
              (Flutter tarafı yazıyor, sağlayıcılar okuyor) ama ayrı ayrı
              eklenebiliyor: kimse üçünü birden istemek zorunda değil. -->
-        <receiver android:name=".EmirlerWidget" android:exported="false">
+        <receiver android:name=".EmirlerWidget" android:exported="false" android:label="@string/w_emirler_ad">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -44,7 +44,7 @@
                 android:resource="@xml/widget_emirler_info" />
         </receiver>
 
-        <receiver android:name=".PortfoyWidget" android:exported="false">
+        <receiver android:name=".PortfoyWidget" android:exported="false" android:label="@string/w_portfoy_ad">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -52,7 +52,7 @@
                 android:resource="@xml/widget_portfoy_info" />
         </receiver>
 
-        <receiver android:name=".RejimWidget" android:exported="false">
+        <receiver android:name=".RejimWidget" android:exported="false" android:label="@string/w_rejim_ad">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

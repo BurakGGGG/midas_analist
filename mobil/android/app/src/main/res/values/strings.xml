@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget seçicide görünen adlar ve açıklamalar. Bunlar olmadan üçü de
+     "Midas Analist" diye görünüyor ve hangisinin ne olduğu anlaşılmıyor. -->
+<resources>
+    <string name="w_emirler_ad">Bugünün emirleri</string>
+    <string name="w_emirler_aciklama">Açılışta girilecek emirler: adet, stop ve hedef</string>
+    <string name="w_portfoy_ad">Portföy</string>
+    <string name="w_portfoy_aciklama">Toplam değer, kâr/zarar ve stopa en yakın pozisyon</string>
+    <string name="w_rejim_ad">Piyasa rejimi</string>
+    <string name="w_rejim_aciklama">XU100, rejim ve BIST\'in reel getirisi</string>
+</resources>

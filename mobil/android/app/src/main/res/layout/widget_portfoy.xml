@@ -22,6 +22,7 @@
         android:orientation="horizontal">
         <TextView
             android:id="@+id/portfoy_deger"
+        android:text="585,10 ₺"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
@@ -31,6 +32,7 @@
             android:textStyle="bold" />
         <TextView
             android:id="@+id/portfoy_kar"
+        android:text="+19,60 ₺  +3,47%"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="14sp"
@@ -39,6 +41,7 @@
 
     <TextView
         android:id="@+id/portfoy_alt"
+        android:text="2 pozisyon · GESAN stopa %15,2"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -50,6 +53,7 @@
 
     <TextView
         android:id="@+id/portfoy_zaman"
+        android:text="14:32 itibarıyla"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="@color/w_sonuk"

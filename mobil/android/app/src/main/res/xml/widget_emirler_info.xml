@@ -12,4 +12,8 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_emirler"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:description="@string/w_emirler_aciklama"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:previewLayout="@layout/widget_emirler" />
