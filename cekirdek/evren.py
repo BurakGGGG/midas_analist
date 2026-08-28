@@ -18,9 +18,13 @@ BIST100 = [
 
 # BIST 30 - en likit çekirdek. Küçük sermaye için en güvenli oyun alanı:
 # spread dar, derinlik yüksek, brüt takas riski düşük.
+#
+# KOZAL burada değil: şirket TRALT (Türk Altın İşletmeleri) olarak
+# yeniden adlandırıldı. Eski kod her taramada 4 başarısız HTTP isteği
+# ve çağrı başına ~3,6 saniye maliyet çıkarıyordu.
 BIST30 = [
     "AKBNK","ALARK","ASELS","ASTOR","BIMAS","CIMSA","EKGYO","ENKAI","EREGL","FROTO",
-    "GARAN","GUBRF","HALKB","ISCTR","KCHOL","KOZAL","KRDMD","MGROS","OYAKC","PETKM",
+    "GARAN","GUBRF","HALKB","ISCTR","KCHOL","TRALT","KRDMD","MGROS","OYAKC","PETKM",
     "PGSUS","SAHOL","SASA","SISE","TAVHL","TCELL","THYAO","TOASO","TUPRS","YKBNK",
 ]
 

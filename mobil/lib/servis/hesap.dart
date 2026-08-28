@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'alistirma.dart' show kum;
 import 'depo.dart';
 import 'egitmen.dart';
 import 'modeller.dart';
@@ -195,6 +196,10 @@ class Hesap extends ChangeNotifier {
     // devam eder ve bir sonraki yazma geri yüklenen veriyi ezer.
     await depo.yukle();
     await egitmen.yukle();
+    // Sanal hesap da tazelenmeli. Bu satır yokken buluttan geri yükleme
+    // sonrası sanal portföy bellekte ESKİ hâlinde kalıyordu ve bir
+    // sonraki yazma geri yüklenen veriyi eziyordu.
+    await kum.yukle();
     notifyListeners();
     return {'geri_yuklendi': true, 'anahtar': yazilan, 'surum': surum};
   }

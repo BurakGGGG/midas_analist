@@ -170,3 +170,91 @@ def test_bozuk_kayit_digerlerini_dusurmez(monkeypatch):
     monkeypatch.setattr(kap, "sirket_haritasi", lambda **k: HARITA)
     kayitlar, _ = kap.topla(asgari_onem=1)
     assert len(kayitlar) == 2
+
+
+# ═══════════════════════════════════════════ çok kodlu şirketler
+# Önceki hâl unvan başına yalnızca İLK kodu tutuyordu ve altı hisse
+# (ISCTR, KRDMD, SKBNK, TSKB, VAKBN, YKBNK) KAP bildirimi almıyordu.
+
+_COK_KODLU = "TÜRKİYE İŞ BANKASI A.Ş."
+_KODLAR = ["ISATR", "ISBTR", "ISCTR", "ISKUR", "TIB"]
+
+
+def test_kod_haritasi_her_kodu_ayri_satir_yapar(monkeypatch):
+    monkeypatch.setattr(kap, "_ham_harita",
+                        lambda **k: {_COK_KODLU: _KODLAR})
+    h = kap.kod_haritasi()
+    assert len(h) == 5
+    for k in _KODLAR:
+        assert h[k] == _COK_KODLU
+
+
+def test_unvan_haritasi_evrendeki_kodu_secer(monkeypatch):
+    """Bildirim İş Bankası'na aitse ISATR'ye değil ISCTR'ye bağlanmalı."""
+    monkeypatch.setattr(kap, "_ham_harita",
+                        lambda **k: {_COK_KODLU: _KODLAR})
+    assert kap.sirket_haritasi()[_COK_KODLU] == "ISCTR"
+
+
+def test_evrende_hicbiri_yoksa_ilk_kod(monkeypatch):
+    monkeypatch.setattr(kap, "_ham_harita",
+                        lambda **k: {"BİLİNMEYEN A.Ş.": ["AAAAA", "BBBBB"]})
+    assert kap.sirket_haritasi()["BİLİNMEYEN A.Ş."] == "AAAAA"
+
+
+def test_eski_bicim_onbellek_okunabilir():
+    """Sürüm yükselten kurulumda önbellek tek-kodlu hâlde.
+
+    Okuyamamak, o gün hiç eşleme olmaması demek olurdu."""
+    eski = {"TÜRK HAVA YOLLARI A.O.": "THYAO", "AKBANK T.A.Ş.": "AKBNK"}
+    yeni = kap._bicime_getir(eski)
+    assert yeni == {"TÜRK HAVA YOLLARI A.O.": ["THYAO"],
+                    "AKBANK T.A.Ş.": ["AKBNK"]}
+
+
+def test_eski_bicim_onbellegi_yaslanmayi_beklemez(tmp_path, monkeypatch):
+    """Eski biçim kaydı taze bile olsa tazelenmeli — yoksa kaybolan
+    kodlar 30 gün daha kayıp kalır."""
+    import json
+    from datetime import date
+    yol = tmp_path / "kap.json"
+    yol.write_text(json.dumps({          # `bicim` alanı YOK = eski kayıt
+        "guncelleme": date.today().isoformat(),
+        "esleme": {"TÜRKİYE İŞ BANKASI A.Ş.": "ISATR"},
+    }), encoding="utf-8")
+    monkeypatch.setattr(kap, "ONBELLEK", yol)
+    cagrildi = {"n": 0}
+
+    def sahte_cek():
+        cagrildi["n"] += 1
+        return {_COK_KODLU: _KODLAR}
+
+    monkeypatch.setattr(kap, "_haritayi_cek", sahte_cek)
+    kap._ham_harita()
+    assert cagrildi["n"] == 1, "eski biçim kaydı tazelenmedi"
+
+
+def test_yeni_bicim_onbellegi_tazeyken_ag_istemez(tmp_path, monkeypatch):
+    import json
+    from datetime import date
+    yol = tmp_path / "kap.json"
+    yol.write_text(json.dumps({
+        "guncelleme": date.today().isoformat(), "bicim": 2,
+        "esleme": {_COK_KODLU: _KODLAR},
+    }), encoding="utf-8")
+    monkeypatch.setattr(kap, "ONBELLEK", yol)
+
+    def patlat():
+        raise AssertionError("taze önbellek varken ağa çıkılmamalı")
+
+    monkeypatch.setattr(kap, "_haritayi_cek", patlat)
+    assert kap._ham_harita()[_COK_KODLU] == _KODLAR
+
+
+def test_kozal_evrende_yok_tralt_var():
+    """KOZAL borsadan çıktı, TRALT oldu. Bayat sembol her taramada
+    4 başarısız HTTP isteği demekti."""
+    from cekirdek import evren
+    hepsi = evren.evren_getir("hepsi")
+    assert "KOZAL" not in hepsi
+    assert "TRALT" in hepsi

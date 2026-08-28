@@ -43,9 +43,17 @@ BASLANGIC_BAKIYE = 10_000.0
 # hisse alınamaz sayılır (backtest.TAVAN_ORANI).
 TAVAN_ORANI = 1.195
 
-# Geçmiş modunda kaç gün geriye gidilebilir. yfinance ~1 yıl veriyor;
-# sınırı biraz altında tutmak "veri yok" hatasını azaltıyor.
-AZAMI_GERI_GUN = 300
+# Simülasyonun veri derinliği.
+#
+# BU SAYI KÜÇÜK OLURSA GEÇMİŞ VERİ SİLİNİR. `veri.fiyat_cek` önbellek
+# bayatsa seriyi yeniden indirir ve dosyanın üzerine YALNIZCA istenen
+# derinlikle yazar. Eskiden 420'ydi: tek bir "2024-06-12'nin fiyatı ne"
+# sorusu, diskteki 2024 verisini silip sonraki soruyu "veri yok"
+# bırakabiliyordu. Günlük iş 750 ile yazdığı için tesadüfen kapalıydı.
+#
+# 1300 gün ≈ 3,5 yıl: kullanıcının seçebileceği en erken tarihten
+# rahatça geride, ve göstergelerin (SMA200) ısınma payını da kapsıyor.
+GECMIS_GUN = 1300
 
 
 @dataclass
@@ -82,7 +90,7 @@ class Cikis:
     tarih: str
 
 
-def _seri(sembol: str, gun: int = 420) -> pd.DataFrame:
+def _seri(sembol: str, gun: int = GECMIS_GUN) -> pd.DataFrame:
     d = veri.fiyat_cek(sembol, gun=gun, onbellek_saat=12.0)
     if d is None or d.empty:
         return pd.DataFrame()
@@ -92,7 +100,7 @@ def _seri(sembol: str, gun: int = 420) -> pd.DataFrame:
 
 
 def barlar(sembol: str, bitis: str | None = None, adet: int = 1,
-           gun: int = 420) -> list[Bar]:
+           gun: int = GECMIS_GUN) -> list[Bar]:
     """`bitis` tarihine kadar (dahil) son `adet` günün barları.
 
     Tarih işlem günü değilse (hafta sonu, tatil) o tarihten ÖNCEKİ en

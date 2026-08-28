@@ -27,8 +27,22 @@ def db(monkeypatch, tmp_path):
     return tmp_path
 
 
+def _is_gunu_tarihi() -> date:
+    """Bugün ya da hafta sonuysa en son iş günü.
+
+    `_calisma` ile `_is_gunu` AYNI günü kullanmak zorunda: nöbetçi
+    "verilen anın tarihinde iş çalıştı mı" diye bakıyor. Kayıt cumartesiye,
+    zaman damgası cumaya yazılınca ikisi tutmuyor ve testler her HAFTA SONU
+    kırılıyordu — koda değil takvime bağlı bir kusur.
+    """
+    g = date.today()
+    while g.weekday() >= 5:
+        g -= timedelta(days=1)
+    return g
+
+
 def _calisma(durum, gun=None, ozet=""):
-    gun = gun or date.today()
+    gun = gun or _is_gunu_tarihi()
     with ambar.baglan() as con:
         con.execute("INSERT INTO calisma (baslangic,bitis,durum,ozet) "
                     "VALUES (?,?,?,?)",
@@ -37,31 +51,29 @@ def _calisma(durum, gun=None, ozet=""):
 
 
 def _is_gunu(saat=20):
-    """Hafta içi bir gün, verilen saatte."""
-    g = datetime.now().replace(hour=saat, minute=0)
-    while g.weekday() >= 5:
-        g -= timedelta(days=1)
-    return g
+    """Hafta içi bir gün, verilen saatte — `_calisma` ile aynı gün."""
+    t = _is_gunu_tarihi()
+    return datetime(t.year, t.month, t.day, saat, 0)
 
 
 # ── çalışma tespiti ────────────────────────────────────────────────────────
 
 def test_basarili_calisma_taninir(db):
     _calisma("başarılı")
-    assert saglik.bugun_calisti_mi()["calisti"] is True
+    assert saglik.bugun_calisti_mi(_is_gunu_tarihi())["calisti"] is True
 
 
 def test_hatali_calisma_basarili_sayilmaz(db):
     _calisma("hata", ozet="yfinance çöktü")
-    d = saglik.bugun_calisti_mi()
+    d = saglik.bugun_calisti_mi(_is_gunu_tarihi())
     assert d["calisti"] is False
     assert d["hata_sayisi"] == 1
     assert "yfinance" in d["son_hata"]
 
 
 def test_dunku_calisma_bugune_sayilmaz(db):
-    _calisma("başarılı", date.today() - timedelta(days=1))
-    assert saglik.bugun_calisti_mi()["calisti"] is False
+    _calisma("başarılı", _is_gunu_tarihi() - timedelta(days=1))
+    assert saglik.bugun_calisti_mi(_is_gunu_tarihi())["calisti"] is False
 
 
 # ── nöbetçi: yakalaması gerekenler ────────────────────────────────────────
@@ -158,13 +170,13 @@ def test_cokme_mesaji_gittiyse_nobetci_susar(db, uyari_dosya):
     """Nöbetçi emniyet ağı, kopya değil."""
     _calisma("hata", ozet="çöktü")
     assert saglik.nobet(_is_gunu(20)) is not None
-    saglik.uyari_isaretle("gunluk_is")
+    saglik.uyari_isaretle("gunluk_is", _is_gunu_tarihi())
     assert saglik.nobet(_is_gunu(20)) is None
 
 
 def test_isaret_ertesi_gun_gecersiz(db, uyari_dosya):
     _calisma("hata", ozet="çöktü")
-    saglik.uyari_isaretle("gunluk_is", date.today() - timedelta(days=1))
+    saglik.uyari_isaretle("gunluk_is", _is_gunu_tarihi() - timedelta(days=1))
     assert saglik.nobet(_is_gunu(20)) is not None
 
 
@@ -184,6 +196,9 @@ def test_gunluk_is_cokerse_telegram_mesaji_gider(db, uyari_dosya, monkeypatch):
     monkeypatch.setattr(telegram, "kurulu_mu", lambda: True)
     monkeypatch.setattr(telegram, "gonder",
                         lambda m, **k: gonderilen.append(m) or True)
+    # İş gününü zorla: hafta sonu çalıştırılırsa iş taramaya HİÇ
+    # gelmeden "atlandi" döner ve test çökme yolunu sınamamış olur.
+    monkeypatch.setattr(gunluk, "islem_gunu_mu", lambda gun=None: (True, ""))
     # Taramayı patlat: gerçekçi bir çökme (yfinance/ağ arızası).
     monkeypatch.setattr(gunluk.tarayici, "tara",
                         lambda *a, **k: (_ for _ in ()).throw(

@@ -102,8 +102,16 @@ def _istek(url: str, zaman_asimi: float = 25.0) -> str | None:
 
 # ── Şirket unvanı ↔ hisse kodu ─────────────────────────────────────────────
 
-def _haritayi_cek() -> dict[str, str]:
-    """bist-sirketler sayfasından {unvan(BÜYÜK): kod} çıkarır."""
+def _haritayi_cek() -> dict[str, list[str]]:
+    """bist-sirketler sayfasından {unvan(BÜYÜK): [kodlar]} çıkarır.
+
+    HER KOD TUTULUYOR. Önceki hâli unvan başına yalnızca ilk kodu
+    saklıyordu (`setdefault(unvan, kod)`) ve çok gruplu paylarda geri
+    kalanlar sessizce düşüyordu: İş Bankası'nın beş kodundan
+    ISATR kazanıp ISCTR kayboluyordu. Evrende kaybolan altı hisse
+    bu yüzden KAP bildirimi almıyordu — ISCTR, KRDMD, SKBNK, TSKB,
+    VAKBN, YKBNK.
+    """
     h = _istek(SIRKET_SAYFASI, zaman_asimi=40.0)
     if not h:
         return {}
@@ -111,16 +119,15 @@ def _haritayi_cek() -> dict[str, str]:
     # kaçışlı gömülü. Bu yüzden düz JSON ayrıştırıcısı işe yaramıyor.
     ciftler = re.findall(
         r'\\"kapMemberTitle\\":\\"(.*?)\\".*?\\"stockCode\\":\\"(.*?)\\"', h)
-    harita: dict[str, str] = {}
+    harita: dict[str, list[str]] = {}
     for unvan, kodlar in ciftler:
         unvan = unvan.strip()
         if not unvan or not kodlar or kodlar == "null":
             continue
         # Tek şirketin birden fazla kodu olabilir (A/B grubu payları).
-        for kod in kodlar.split(","):
-            kod = kod.strip().upper()
-            if kod:
-                harita.setdefault(unvan.upper(), kod)
+        temiz = [k.strip().upper() for k in kodlar.split(",") if k.strip()]
+        if temiz:
+            harita.setdefault(unvan.upper(), temiz)
     return harita
 
 
@@ -129,14 +136,58 @@ def sirket_haritasi(yenile: bool = False, sessiz: bool = True) -> dict[str, str]
 
     Ağ hatasında bayat önbellek kullanılır: eski eşleme, hiç eşleme
     olmamasından iyidir — unvanlar zaten yıllarca değişmiyor.
+
+    Çok kodlu şirkette EVRENDEKİ kod seçilir (bkz. `_tercih_edilen`):
+    bildirim İş Bankası'na aitse onu ISATR'ye değil, bizim takip
+    ettiğimiz ISCTR'ye bağlamak gerekiyor.
     """
-    bayat = {}
+    ham = _ham_harita(yenile=yenile, sessiz=sessiz)
+    return {unvan: _tercih_edilen(kodlar) for unvan, kodlar in ham.items()
+            if kodlar}
+
+
+def kod_haritasi(yenile: bool = False, sessiz: bool = True) -> dict[str, str]:
+    """{hisse kodu: unvan(BÜYÜK)} — ters yön, HER kod ayrı satır.
+
+    Sembol araması bunu kullanıyor: kullanıcı "iş bankası" yazdığında
+    ISCTR çıkmalı, ve ISATR de ayrı bir satır olarak durmalı.
+    """
+    cikti: dict[str, str] = {}
+    for unvan, kodlar in _ham_harita(yenile=yenile, sessiz=sessiz).items():
+        for k in kodlar:
+            cikti.setdefault(k, unvan)
+    return cikti
+
+
+def _tercih_edilen(kodlar: list[str]) -> str:
+    """Çok kodlu şirkette hangi kod. Evrendekiler öncelikli."""
+    if not kodlar:
+        return ""
+    try:
+        from . import evren as _e
+        izlenen = set(_e.evren_getir("hepsi"))
+        for k in kodlar:
+            if k in izlenen:
+                return k
+    except Exception:
+        pass
+    return kodlar[0]
+
+
+def _ham_harita(yenile: bool = False,
+                sessiz: bool = True) -> dict[str, list[str]]:
+    """{unvan: [kodlar]} — önbellekli ham veri. İki yönün de kaynağı."""
+    bayat: dict[str, list[str]] = {}
     if ONBELLEK.exists():
         try:
             k = json.loads(ONBELLEK.read_text(encoding="utf-8"))
-            bayat = k.get("esleme", {})
+            bayat = _bicime_getir(k.get("esleme", {}))
             yas = (date.today() - date.fromisoformat(k["guncelleme"])).days
-            if not yenile and yas < HARITA_OMRU_GUN and bayat:
+            # `bicim` alanı yoksa kayıt ESKİ tek-kodlu hâlde. Yaşı ne
+            # olursa olsun tazelenmeli, yoksa kaybolan kodlar 30 gün
+            # daha kayıp kalır.
+            eski_bicim = int(k.get("bicim", 1)) < 2
+            if not yenile and not eski_bicim and yas < HARITA_OMRU_GUN and bayat:
                 return bayat
         except Exception:
             pass
@@ -149,11 +200,28 @@ def sirket_haritasi(yenile: bool = False, sessiz: bool = True) -> dict[str, str]
         return bayat
     ONBELLEK.parent.mkdir(parents=True, exist_ok=True)
     ONBELLEK.write_text(json.dumps(
-        {"guncelleme": date.today().isoformat(), "esleme": yeni},
+        {"guncelleme": date.today().isoformat(), "bicim": 2, "esleme": yeni},
         ensure_ascii=False, indent=1), encoding="utf-8")
     if not sessiz:
-        print(f"    KAP şirket listesi tazelendi: {len(yeni)} unvan")
+        kod_sayisi = sum(len(v) for v in yeni.values())
+        print(f"    KAP şirket listesi tazelendi: {len(yeni)} unvan, "
+              f"{kod_sayisi} kod")
     return yeni
+
+
+def _bicime_getir(esleme: dict) -> dict[str, list[str]]:
+    """Eski {unvan: kod} kaydını yeni {unvan: [kod]} biçimine çevirir.
+
+    Sürüm yükselten kurulumda önbellek eski biçimde. Okuyamamak, o gün
+    hiç eşleme olmaması demek olurdu.
+    """
+    cikti: dict[str, list[str]] = {}
+    for unvan, deger in (esleme or {}).items():
+        if isinstance(deger, str):
+            cikti[unvan] = [deger]
+        elif isinstance(deger, list):
+            cikti[unvan] = [str(x) for x in deger if x]
+    return cikti
 
 
 # ── Günün bildirimleri ─────────────────────────────────────────────────────
