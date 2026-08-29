@@ -145,21 +145,39 @@ class _BugunDurum extends State<BugunEkran> {
               ],
             ),
             const SizedBox(height: 10),
+            // İKİSİ DE DARALABİLİR. Sabit genişlikte yan yana
+            // koyunca büyük rakam + kâr/zarar satırı taşıyordu; taşma
+            // ancak portföyde pozisyon varken görünüyor ve görsel test
+            // uzun süre boş portföyle çalıştığı için gizli kalmıştı.
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('${tl(deger + nakit)} ₺',
-                    style: Theme.of(c).textTheme.displaySmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()])),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text('${tl(deger + nakit)} ₺',
+                        style: Theme.of(c).textTheme.displaySmall?.copyWith(
+                            fontFeatures: const [
+                              FontFeature.tabularFigures()
+                            ])),
+                  ),
+                ),
                 const SizedBox(width: 10),
                 if (depo.pozisyonlar.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Text('${tl(kar)} ₺ (${yzd(karY)})',
-                        style: TextStyle(
-                            color: sem.yon(kar),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14)),
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text('${tl(kar)} ₺ (${yzd(karY)})',
+                            style: TextStyle(
+                                color: sem.yon(kar),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14)),
+                      ),
+                    ),
                   ),
               ],
             ),

@@ -259,6 +259,32 @@ def stop_uyarisi(pozisyon: dict, fiyat: float, tur: str) -> str:
     return ""
 
 
+def sermaye_islemi_push(kayit: dict) -> tuple[str, str]:
+    """(başlık, gövde) — bedelsiz / sermaye işlemi uyarısı."""
+    sem = kayit.get("sembol", "?")
+    if kayit.get("fiyat_bolunur"):
+        oran = kayit.get("oran")
+        return (f"📐 {sem} bedelsiz açıkladı",
+                (f"%{oran:g} · " if oran else "") +
+                "Fiyat mekanik olarak düşecek — kayıp değil.")
+    return (f"📐 {sem} sermaye işlemi",
+            f"{kayit.get('konu', '')} — ayrıntıya bak.")
+
+
+def sermaye_islemi_mesaji(kayit: dict) -> str:
+    """Telegram metni. Asıl iş PANİĞİ ÖNLEMEK: 'fiyat düştü' ile
+    'para kaybettin' aynı şey değil ve bunu düşüş gününden ÖNCE
+    söylemek gerekiyor."""
+    sem = kacis(kayit.get("sembol", "?"))
+    bas = ("📐 <b>{} — FİYAT MEKANİK OLARAK DÜŞECEK</b>"
+           if kayit.get("fiyat_bolunur")
+           else "📐 <b>{} — sermaye işlemi</b>").format(sem)
+    govde = kacis(kayit.get("aciklama", ""))
+    url = kayit.get("url") or ""
+    kuyruk = f'\n\n<a href="{kacis(url)}">KAP bildirimi</a>' if url else ""
+    return f"{bas}\n\n{govde}{kuyruk}"
+
+
 # Telegram menüsüne kaydedilen komutlar. Tek kaynak: hem menü hem
 # yardım metni buradan üretilir, ikisi ayrışamaz.
 KOMUTLAR = [

@@ -213,6 +213,24 @@ class _SahteApi extends Api {
       _ikili('risk');
 
   @override
+  Future<Map<String, dynamic>> sermayeIslemleri(
+          {List<String> semboller = const [], int gun = 30}) async =>
+      {
+        'islemler': [
+          {'sembol': 'GESAN', 'tarih': '2026-08-28',
+           'konu': 'bedelsiz sermaye artırımı', 'oran': 100.0,
+           'fiyat_bolunur': true,
+           'url': 'https://www.kap.org.tr/tr/Bildirim/1',
+           'aciklama': 'GESAN %100 oranında bedelsiz sermaye artırımı '
+               'açıkladı.\n\nİşlem gününde fiyat MEKANİK olarak düşecek — '
+               'hisse ucuzlamıyor, adedin artıyor. Toplam paran '
+               'değişmiyor. Aracı kurum ekranında büyük bir düşüş '
+               'göreceksin; bu bir kayıp değil.'},
+        ],
+        'sembol_sayisi': 2,
+      };
+
+  @override
   Future<Map<String, dynamic>> izlemeListesi() async => {
         'izleme': [
           {'sembol': 'ASELS', 'tur': 'izleme', 'alt': 360.0, 'ust': 0.0,

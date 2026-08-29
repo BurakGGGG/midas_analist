@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../servis/depo.dart';
 import '../servis/modeller.dart';
 import '../parca/kart.dart';
+import '../parca/sermaye_uyari.dart';
 import '../tema.dart';
 import 'hisse.dart';
 
@@ -83,6 +84,17 @@ class _PortfoyDurum extends State<PortfoyEkran> {
                               child: _ozet(c, sem),
                             ),
                             const SizedBox(height: 14),
+                            // Bedelsiz uyarısı POZİSYONLARIN ÜSTÜNDE:
+                            // kullanıcı ekranda büyük bir düşüş görmeden
+                            // önce sebebini okumalı.
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: SermayeUyarisi(
+                                  semboller: depo.pozisyonlar
+                                      .map((x) => x.sembol)
+                                      .toList()),
+                            ),
                             ...((_veri?['pozisyonlar'] as List?) ?? []).map((p) =>
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),

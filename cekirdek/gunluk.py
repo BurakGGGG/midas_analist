@@ -248,6 +248,34 @@ def calistir(sermaye: float = 1000.0, evren_adi: str = "bist100",
                 else:
                     rapor["adimlar"]["kap"] = {"bildirim": 0}
                     yaz("       KAP: bildirim alınamadı")
+                # SERMAYE İŞLEMİ UYARISI. Bedelsizden sonra fiyat
+                # mekanik olarak düşüyor ve bunu bilmeyen kullanıcı
+                # aracı kurum ekranında -%50 görüp panik satıyor.
+                # Uyarı düşüş gününden ÖNCE gitmeli.
+                #
+                # Yalnızca BUGÜNKÜ bildirimler: iş günde bir kez
+                # çalıştığı için her bildirim tam bir kez duyurulur.
+                # Geçmişe bakmak, aynı bedelsizi 30 gün boyunca her
+                # akşam tekrar duyurmak olurdu.
+                try:
+                    from . import izleme as _iz, sermaye_islemi as _si
+                    _semboller = [k["sembol"] for k in _iz.liste()]
+                    if _semboller:
+                        _bugun = date.today().isoformat()
+                        _islemler = [x for x in _si.bul(_semboller, gun=2)
+                                     if x["tarih"] == _bugun]
+                        rapor["adimlar"]["sermaye_islemi"] = len(_islemler)
+                        for _x in _islemler:
+                            from . import bildirim as _b, haberci as _h
+                            _bas, _gov = _b.sermaye_islemi_push(_x)
+                            _h.yolla(_b.sermaye_islemi_mesaji(_x), _bas, _gov,
+                                     veri={"ekran": "hisse",
+                                           "sembol": _x["sembol"]})
+                        if _islemler:
+                            yaz(f"       sermaye işlemi uyarısı: "
+                                f"{len(_islemler)} hisse")
+                except Exception as e:
+                    rapor["adimlar"]["sermaye_islemi"] = {"hata": str(e)[:150]}
             except Exception as e:
                 rapor["adimlar"]["kap"] = {"hata": str(e)[:200]}
                 yaz(f"       KAP alınamadı: {str(e)[:80]}")

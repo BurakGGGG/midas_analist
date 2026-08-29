@@ -1361,6 +1361,28 @@ def alistirma_sinyaller(tarih: str, sermaye: float = 10_000.0,
         raise HTTPException(503, f"sinyaller üretilemedi: {e}")
 
 
+@app.get("/sermaye-islemleri")
+def sermaye_islemleri(semboller: str = "", gun: int = 30):
+    """Verilen hisselerde bedelsiz / sermaye artırımı bildirimleri.
+
+    Bedelsiz sonrası fiyat MEKANİK olarak düşer. Bunu bilmeyen kullanıcı
+    aracı kurum ekranında -%50 görüp panik satar — hiçbir şey olmadığı
+    bir günde hayatının en pahalı kararını verir.
+
+    `semboller` boşsa sunucunun izlediği hisseler (pozisyonlar + izleme
+    listesi) kullanılır.
+    """
+    from cekirdek import sermaye_islemi, ambar, izleme
+    ambar.kur()
+    liste = [x.strip().upper() for x in semboller.split(",") if x.strip()]
+    if not liste:
+        liste = [k["sembol"] for k in izleme.liste()]
+    if not liste:
+        return {"islemler": [], "sembol_sayisi": 0}
+    return guvenli({"islemler": sermaye_islemi.bul(liste, gun=gun),
+                    "sembol_sayisi": len(set(liste))})
+
+
 # ── izleme listesi ─────────────────────────────────────────────────────────
 #
 # Sahip OLMADIĞIN, sadece beklediğin hisseler. Pozisyon izleme karar
