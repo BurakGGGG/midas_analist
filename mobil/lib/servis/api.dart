@@ -292,6 +292,57 @@ class Api {
   Future<Map<String, dynamic>> sozluk() async =>
       Map<String, dynamic>.from(await _get('/sozluk'));
 
+  /// Aranabilir hisse listesi. Sözlük gibi bir kez inip saklanır.
+  Future<Map<String, dynamic>> semboller() async =>
+      Map<String, dynamic>.from(await _get('/semboller'));
+
+  // ── Sanal İşlem ──────────────────────────────────────────────────────
+  // Hepsi durumsuz: bakiye ve pozisyonlar gövdede gidiyor.
+
+  Future<Map<String, dynamic>> sanalAralik() async =>
+      Map<String, dynamic>.from(await _get('/alistirma/aralik'));
+
+  Future<Map<String, dynamic>> sanalAdim(
+          String tarih, double nakit, List<Map<String, dynamic>> pozisyonlar,
+          {int adim = 1, List<String> izlenen = const []}) async =>
+      Map<String, dynamic>.from(await _post('/alistirma/adim', {
+        'tarih': tarih, 'nakit': nakit, 'adim': adim,
+        'pozisyonlar': pozisyonlar, 'izlenen': izlenen,
+      }, uzun: true));
+
+  Future<Map<String, dynamic>> sanalDeger(String tarih, double nakit,
+          List<Map<String, dynamic>> pozisyonlar) async =>
+      Map<String, dynamic>.from(await _post('/alistirma/deger', {
+        'tarih': tarih, 'nakit': nakit, 'pozisyonlar': pozisyonlar,
+      }, uzun: true));
+
+  Future<Map<String, dynamic>> sanalAl(
+          String sembol, String tarih, int adet, double nakit) async =>
+      Map<String, dynamic>.from(await _post('/alistirma/al', {
+        'sembol': sembol, 'tarih': tarih, 'adet': adet, 'nakit': nakit,
+      }, uzun: true));
+
+  Future<Map<String, dynamic>> sanalSat(
+          String tarih, Map<String, dynamic> pozisyon, {int adet = 0}) async =>
+      Map<String, dynamic>.from(await _post('/alistirma/sat', {
+        'tarih': tarih, 'pozisyon': pozisyon, 'adet': adet,
+      }, uzun: true));
+
+  Future<Map<String, dynamic>> sanalSeri(String sembol,
+          {String? baslangic, String? bitis, int azami = 120}) async =>
+      Map<String, dynamic>.from(await _get('/alistirma/seri', uzun: true,
+          sorgu: {
+            'sembol': sembol,
+            if (baslangic != null) 'baslangic': baslangic,
+            if (bitis != null) 'bitis': bitis,
+            'azami': '$azami',
+          }));
+
+  Future<Map<String, dynamic>> sanalSinyaller(String tarih,
+          {double sermaye = 10000, int azami = 8}) async =>
+      Map<String, dynamic>.from(await _get('/alistirma/sinyaller', uzun: true,
+          sorgu: {'tarih': tarih, 'sermaye': '$sermaye', 'azami': '$azami'}));
+
   Future<List<dynamic>> ogrenListe() async =>
       (await _get('/ogren'))['konular'] as List<dynamic>;
 

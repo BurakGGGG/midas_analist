@@ -1239,6 +1239,26 @@ def alistirma_adet(bakiye: float, fiyat: float, stop: float,
                                        risk_yuzde, azami_pozisyon))
 
 
+@app.get("/semboller")
+def semboller_listesi(evren_adi: str = "hepsi"):
+    """Aranabilir hisse listesi. Sözlük gibi BİR KEZ indirilip saklanır.
+
+    Arama telefonda çalışıyor: tuş başına ağ isteği kabul edilemez ve
+    liste gzip'li ~21 KB. `surum` artınca istemci yeniden indirir.
+
+    Normalize edilmiş adlar BURADA hesaplanıp gönderiliyor — Dart ve
+    Python aynı harfi farklı sadeleştiriyor ('İ'.lower() Python'da iki
+    kod noktası, Dart'ta tek rune) ve iki dilde ayrı yazmak sessizce
+    farklı sonuç verirdi.
+    """
+    from cekirdek import semboller as _s
+    try:
+        kayitlar = _s.liste(evren_adi)
+    except Exception as e:
+        raise HTTPException(503, f"sembol listesi hazırlanamadı: {e}")
+    return {"surum": _s.SURUM, "hisseler": kayitlar}
+
+
 # ── Sanal İşlem: simülatör uçları ──────────────────────────────────────────
 #
 # Hepsi DURUMSUZ: bakiye, pozisyonlar ve özkaynak geçmişi telefonda
