@@ -247,6 +247,10 @@ class _KarneDurum extends State<KarneEkran> {
           );
         }),
         if (filtre['yeterli_mi'] == true) ...[
+          // HABER SİCİLİ: haberleri hisseye eşleştiriyorduk ama
+          // sonucunu hiç ölçmüyorduk. Sinyal sicilinin hemen yanında
+          // duruyor çünkü aynı soruyu soruyor: bu şey işe yarıyor mu?
+          const _HaberSicili(),
           const Baslik('Filtreler iş görüyor mu?'),
           Kutu(
             child: Column(
@@ -293,4 +297,132 @@ class _KarneDurum extends State<KarneEkran> {
           ],
         ),
       );
+}
+
+
+// ── haber sicili ───────────────────────────────────────────────────────────
+
+/// Haber fiyatı gerçekten hareket ettiriyor mu?
+///
+/// Muhtemel cevap: çoğu haber hiçbir şey yapmıyor. Ve bunu GÖRMEK,
+/// habere göre alım yapma dürtüsünü kesiyor — sistemin bütün mimarisi
+/// zaten bunun üstüne kurulu.
+class _HaberSicili extends StatefulWidget {
+  const _HaberSicili();
+  @override
+  State<_HaberSicili> createState() => _HaberSiciliDurum();
+}
+
+class _HaberSiciliDurum extends State<_HaberSicili> {
+  Map<String, dynamic>? _v;
+
+  @override
+  void initState() {
+    super.initState();
+    _getir();
+  }
+
+  Future<void> _getir() async {
+    try {
+      final r = await depo.api.haberSicil();
+      if (mounted) setState(() => _v = r);
+    } catch (_) {
+      // Sessiz: ölçüm gelmemesi karneyi bozmamalı.
+    }
+  }
+
+  @override
+  Widget build(BuildContext c) {
+    final v = _v;
+    if (v == null) return const SizedBox.shrink();
+    final sem = Sem(c);
+    final kategoriler = (v['kategoriler'] ?? {}) as Map<String, dynamic>;
+
+    if (kategoriler.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Baslik('Haber işe yarıyor mu?',
+              alt: 'haberden sonraki hareket, piyasadan arındırılmış'),
+          Kutu(
+            ic: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Text('${v['not'] ?? 'Henüz yeterli haber birikmedi.'}',
+                style: Theme.of(c).textTheme.bodySmall?.copyWith(height: 1.5)),
+          ),
+        ],
+      );
+    }
+
+    // Kategoriler 20 günlük etkiye göre sıralı: asıl merak edilen
+    // hangi haber türünün gerçekten fark yarattığı.
+    final sirali = kategoriler.entries.toList()
+      ..sort((a, b) {
+        double et(dynamic x) {
+          final vd = ((x['vadeler'] ?? {}) as Map)['20'] ??
+              ((x['vadeler'] ?? {}) as Map)[20];
+          return ((vd?['ortalama'] ?? 0) as num).toDouble();
+        }
+
+        return et(b.value).compareTo(et(a.value));
+      });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Baslik('Haber işe yarıyor mu?',
+            alt: '${v['olculen']} haber · piyasadan arındırılmış'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Not(
+            'Haberden sonraki hareket, aynı günlerde PİYASANIN yaptığı '
+            'hareket çıkarılarak ölçülüyor. Borsa yükselirken hissenin '
+            'de yükselmesi habere bağlanamaz.',
+            ikon: Icons.article_sharp, renk: sem.aksan,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...sirali.map((e) {
+          final m = Map<String, dynamic>.from(e.value as Map);
+          final vd = (m['vadeler'] ?? {}) as Map;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Kutu(
+              ic: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(e.key,
+                      style: Theme.of(c).textTheme.titleMedium
+                          ?.copyWith(fontSize: 15)),
+                  const SizedBox(height: 8),
+                  Row(children: vd.keys.map((k) {
+                    final d = Map<String, dynamic>.from(vd[k] as Map);
+                    final ort = (d['ortalama'] as num?)?.toDouble() ?? 0;
+                    return Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('$k gün',
+                              style: Theme.of(c).textTheme.bodySmall
+                                  ?.copyWith(fontSize: 10.5)),
+                          Text(yzd(ort),
+                              style: TextStyle(
+                                  color: sem.yon(ort),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14)),
+                          Text('${d['ornek']} haber',
+                              style: TextStyle(
+                                  color: Renk.metinSonuk, fontSize: 10)),
+                        ],
+                      ),
+                    );
+                  }).toList()),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
 }

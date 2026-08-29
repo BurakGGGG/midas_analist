@@ -232,6 +232,44 @@ class _SahteApi extends Api {
       };
 
   @override
+  Future<Map<String, dynamic>> haberSicil({int gun = 180}) async => {
+        'yeterli_mi': true, 'haber': 412, 'olculen': 268, 'gun': 180,
+        'piyasadan_arindirildi': true, 'not': '',
+        'kategoriler': {
+          'sermaye': {
+            'vadeler': {
+              '1': {'ornek': 21, 'ortalama': 1.84, 'medyan': 1.10,
+                    'pozitif_oran': 61.9},
+              '5': {'ornek': 21, 'ortalama': 3.02, 'medyan': 2.40,
+                    'pozitif_oran': 66.7},
+              '20': {'ornek': 19, 'ortalama': 4.71, 'medyan': 3.90,
+                     'pozitif_oran': 63.2},
+            }
+          },
+          'sözleşme': {
+            'vadeler': {
+              '1': {'ornek': 44, 'ortalama': 0.31, 'medyan': 0.10,
+                    'pozitif_oran': 52.3},
+              '5': {'ornek': 44, 'ortalama': 0.12, 'medyan': -0.20,
+                    'pozitif_oran': 47.7},
+              '20': {'ornek': 40, 'ortalama': -0.44, 'medyan': -0.90,
+                     'pozitif_oran': 45.0},
+            }
+          },
+          'bilanço': {
+            'vadeler': {
+              '1': {'ornek': 33, 'ortalama': -0.18, 'medyan': 0.00,
+                    'pozitif_oran': 50.0},
+              '5': {'ornek': 33, 'ortalama': -1.22, 'medyan': -0.80,
+                    'pozitif_oran': 42.4},
+              '20': {'ornek': 29, 'ortalama': -2.05, 'medyan': -1.60,
+                     'pozitif_oran': 41.4},
+            }
+          },
+        },
+      };
+
+  @override
   Future<Map<String, dynamic>> takvim(
           {List<String> semboller = const [], int gun = 120}) async =>
       {
@@ -891,7 +929,7 @@ void main() {
     await depo.yukle();
     Depo.apiUretici = _SahteApi.new;
     addTearDown(() => Depo.apiUretici = null);
-    await t.binding.setSurfaceSize(const Size(420, 1900));
+    await t.binding.setSurfaceSize(const Size(420, 2400));
     await t.pumpWidget(_sarmala(const KarneEkran()));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),

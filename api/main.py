@@ -1361,6 +1361,22 @@ def alistirma_sinyaller(tarih: str, sermaye: float = 10_000.0,
         raise HTTPException(503, f"sinyaller üretilemedi: {e}")
 
 
+@app.get("/haber-sicil")
+def haber_sicil_ucu(gun: int = 180):
+    """Haber sicili — haber fiyatı gerçekten hareket ettiriyor mu?
+
+    Haberleri hisseye eşleştiriyorduk ama sonucunu hiç ölçmüyorduk.
+    Ölçüm sinyal siciliyle aynı yöntemde: haber gününden sonraki
+    1/5/20 iş günü getirisi, PİYASADAN ARINDIRILMIŞ.
+
+    Muhtemel cevap "çoğu haber hiçbir şey yapmıyor" ve bunu görmek,
+    habere göre alım yapma dürtüsünü kesiyor.
+    """
+    from cekirdek import haber_sicil, ambar
+    ambar.kur()
+    return guvenli(haber_sicil.olc(gun=gun))
+
+
 @app.get("/takvim")
 def takvim_ucu(semboller: str = "", gun: int = 120):
     """Bilanço, temettü, genel kurul ve ekonomi takvimi.

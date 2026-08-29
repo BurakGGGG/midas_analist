@@ -319,6 +319,11 @@ class Api {
   Future<void> izlemeSil(String sembol) async =>
       _sil('/izleme/$sembol');
 
+  /// Haber sicili — haber fiyatı gerçekten hareket ettiriyor mu?
+  Future<Map<String, dynamic>> haberSicil({int gun = 180}) async =>
+      Map<String, dynamic>.from(
+          await _get('/haber-sicil', uzun: true, sorgu: {'gun': '$gun'}));
+
   /// Bilanço, temettü, genel kurul ve ekonomi takvimi.
   Future<Map<String, dynamic>> takvim(
           {List<String> semboller = const [], int gun = 120}) async =>
