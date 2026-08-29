@@ -35,6 +35,8 @@ import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
 import 'package:midas_analist/ekran/tezler.dart';
 import 'package:midas_analist/ekran/oyun_acilis.dart';
+import 'package:midas_analist/ekran/oyun_tanitim.dart';
+import 'package:midas_analist/parca/ipucu.dart';
 import 'package:midas_analist/ekran/oyun_kabuk.dart';
 import 'package:midas_analist/ekran/oyun_ekranlar.dart';
 import 'package:midas_analist/servis/oyun.dart';
@@ -515,6 +517,8 @@ void main() {
   Future<void> oyunKur({int gun = 0, bool pozisyonlu = false}) async {
     SharedPreferences.setMockInitialValues({});
     await depo.yukle();
+    await ipucu.yukle();
+    await ipucu.okundu('tanitim');
     await oyun.yukle();
     final d = oyunVerisi();
     oyun.tohum = (d['tohum'] as num).toInt();
@@ -552,9 +556,41 @@ void main() {
     }
   }
 
+  testWidgets('oyun_tanitim', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await ipucu.yukle();
+    await t.binding.setSurfaceSize(const Size(420, 900));
+    await t.pumpWidget(_sarmala(
+        Scaffold(body: OyunTanitim(bitti: () {})), tema: temaOyun));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_tanitim.png'));
+  });
+
+  testWidgets('oyun_tanitim_stop', (t) async {
+    // Üçüncü adım: stop/hedef görseliyle. En çok açıklama gerektiren
+    // kavram bu ve görselin doğru çizildiği ancak gözle görülüyor.
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await ipucu.yukle();
+    await t.binding.setSurfaceSize(const Size(420, 900));
+    await t.pumpWidget(_sarmala(
+        Scaffold(body: OyunTanitim(bitti: () {})), tema: temaOyun));
+    await t.pumpAndSettle();
+    await t.tap(find.text('DEVAM'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('DEVAM'));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_tanitim_stop.png'));
+  });
+
   testWidgets('oyun_baslangic', (t) async {
     SharedPreferences.setMockInitialValues({});
     await depo.yukle();
+    await ipucu.yukle();
+    await ipucu.okundu('tanitim');
     await oyun.yukle();
     await t.binding.setSurfaceSize(const Size(420, 1000));
     await t.pumpWidget(_sarmala(const OyunKabuk()));
@@ -607,6 +643,29 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/oyun_emirler.png'));
+  });
+
+  testWidgets('oyun_alim', (t) async {
+    // Alanların yardım metinleri uzadı; taşma ancak gözle görülüyor.
+    await oyunKur(gun: 28);
+    await t.binding.setSurfaceSize(const Size(420, 1700));
+    await t.pumpWidget(_sarmala(
+        OyunAlim(kod: oyun.hisseler.first.kod), tema: temaOyun));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_alim.png'));
+  });
+
+  testWidgets('oyun_alim_limit', (t) async {
+    await oyunKur(gun: 28);
+    await t.binding.setSurfaceSize(const Size(420, 1800));
+    await t.pumpWidget(_sarmala(
+        OyunAlim(kod: oyun.hisseler.first.kod), tema: temaOyun));
+    await t.pumpAndSettle();
+    await t.tap(find.text('LİMİT'));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_alim_limit.png'));
   });
 
   testWidgets('oyun_borsa', (t) async {

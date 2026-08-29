@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:midas_analist/servis/hesap.dart';
 import 'package:midas_analist/ekran/oyun_kabuk.dart';
+import 'package:midas_analist/parca/ipucu.dart';
 import 'package:midas_analist/servis/oyun.dart';
 import 'package:midas_analist/tema.dart';
 
@@ -426,9 +427,45 @@ void main() {
   // ── kabuk ───────────────────────────────────────────────────────────────
 
   group('oyun kabuğu', () {
-    testWidgets('başlangıçta zorluk seçimi çıkar', (t) async {
+    /// Tanıtımı görülmüş say — aksi halde her test ilk ekranda tanıtıma
+    /// takılır. Tanıtımın kendisi ayrıca sınanıyor.
+    Future<void> tanitimiAtla() async {
       SharedPreferences.setMockInitialValues({});
+      await ipucu.yukle();
+      await ipucu.okundu('tanitim');
       await oyun.yukle();
+    }
+
+    testWidgets('İLK GİRİŞTE tanıtım çıkar, zorluk seçimi değil', (t) async {
+      // Borsayı bilmeyen biri zorluk ekranında "8 hisse · 50.000 ₺"
+      // satırını okuyup ne yapacağını bilemiyordu.
+      SharedPreferences.setMockInitialValues({});
+      await ipucu.yukle();
+      await oyun.yukle();
+      await t.pumpWidget(MaterialApp(
+          theme: temaOyun, home: OyunKabuk(key: UniqueKey())));
+      await t.pumpAndSettle();
+      expect(find.text('Bu bir oyun'), findsOneWidget);
+      expect(find.text('ZORLUK SEÇ'), findsNothing);
+    });
+
+    testWidgets('tanıtım dört adım ve atlanabilir', (t) async {
+      SharedPreferences.setMockInitialValues({});
+      await ipucu.yukle();
+      await oyun.yukle();
+      await t.pumpWidget(MaterialApp(
+          theme: temaOyun, home: OyunKabuk(key: UniqueKey())));
+      await t.pumpAndSettle();
+      expect(find.text('1 / 4'), findsOneWidget);
+      await t.tap(find.text('ATLA'));
+      await t.pumpAndSettle();
+      expect(find.text('ZORLUK SEÇ'), findsOneWidget);
+      expect(ipucu.gorunur('tanitim'), isFalse,
+          reason: 'tanıtım bir daha çıkmamalı');
+    });
+
+    testWidgets('tanıtım görüldüyse zorluk seçimi çıkar', (t) async {
+      await tanitimiAtla();
       await t.pumpWidget(MaterialApp(
           theme: temaOyun,
           home: OyunKabuk(key: UniqueKey())));
@@ -439,8 +476,7 @@ void main() {
     });
 
     testWidgets('oyun sürerken BEŞ sekme ve gün şeridi var', (t) async {
-      SharedPreferences.setMockInitialValues({});
-      await oyun.yukle();
+      await tanitimiAtla();
       final o = _oyunKur();
       oyun
         ..tohum = o.tohum

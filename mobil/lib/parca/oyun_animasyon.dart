@@ -119,7 +119,7 @@ class _EmirOnayDurum extends State<_EmirOnay>
               Text(
                   !bitti
                       ? 'EMİR İLETİLİYOR'
-                      : (gercek ? 'GERÇEKLEŞTİ' : 'EMİR DEFTERİNDE'),
+                      : (gercek ? 'ALDIN' : 'EMRİN BEKLİYOR'),
                   style: TextStyle(
                       color: renk, fontSize: 13, letterSpacing: 2,
                       fontWeight: FontWeight.w700)),
@@ -134,7 +134,8 @@ class _EmirOnayDurum extends State<_EmirOnay>
                       color: OyunRenk.metinSolgun, fontSize: 13)),
               if (bitti && !gercek) ...[
                 const SizedBox(height: 10),
-                const Text('Fiyat buraya gelirse dolar.',
+                const Text('Fiyat buraya düşerse alım kendiliğinden '
+                    'yapılacak.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: OyunRenk.metinSonuk, fontSize: 11.5,
@@ -203,7 +204,9 @@ class _GunOzetiSayfa extends StatelessWidget {
                   ? Icons.check_circle_sharp
                   : Icons.shield_sharp,
               renk: k.kar >= 0 ? sem.arti : sem.eksi,
-              baslik: '${k.sembol} · ${k.sebep} çalıştı',
+              baslik: k.sebep == 'hedef'
+                  ? '${k.sembol} · hedefe ulaştı, satıldı'
+                  : '${k.sembol} · stopa düştü, satıldı',
               alt: '${k.adet} adet · ${tl(k.giris)} → ${tl(k.cikis)} ₺',
               sag: '${k.kar >= 0 ? '+' : ''}${tl(k.kar)} ₺',
             ),
@@ -212,7 +215,7 @@ class _GunOzetiSayfa extends StatelessWidget {
               c,
               ikon: Icons.playlist_add_check_sharp,
               renk: OyunRenk.aksan,
-              baslik: '${e.sembol} · emrin doldu',
+              baslik: '${e.sembol} · beklettiğin emir gerçekleşti',
               alt: '${e.adet} adet · ${tl(e.fiyat)} ₺',
               sag: '',
             ),
@@ -221,8 +224,9 @@ class _GunOzetiSayfa extends StatelessWidget {
               c,
               ikon: Icons.timer_off_sharp,
               renk: OyunRenk.metinSonuk,
-              baslik: '${e.sembol} · emrin süresi doldu',
-              alt: 'fiyat ${tl(e.fiyat)} ₺ seviyesine hiç gelmedi',
+              baslik: '${e.sembol} · emrin iptal oldu',
+              alt: 'fiyat ${tl(e.fiyat)} ₺ seviyesine hiç düşmedi, '
+                  'ayrılan para geri geldi',
               sag: '',
             ),
         ],

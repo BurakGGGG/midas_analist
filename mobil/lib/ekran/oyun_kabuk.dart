@@ -6,7 +6,9 @@ import '../servis/oyun.dart';
 import '../tema.dart';
 import 'kabuk.dart' show sekme, Sekme;
 import '../parca/oyun_animasyon.dart';
+import '../parca/ipucu.dart';
 import 'oyun_acilis.dart';
+import 'oyun_tanitim.dart';
 import 'oyun_ekranlar.dart';
 
 /// Sanal İşlem'in KENDİ kabuğu.
@@ -31,6 +33,9 @@ class _OyunKabukDurum extends State<OyunKabuk> {
   /// Açılış dizisi bitene kadar true. Kayıtlı oyun varsa piyasa
   /// yeniden üretilirken, yeni oyunda zorluk seçildikten sonra çalışıyor.
   bool _aciliyor = false;
+
+  /// `?` ile elle açılan tanıtım.
+  bool _tanitim = false;
 
   @override
   void initState() {
@@ -68,6 +73,14 @@ class _OyunKabukDurum extends State<OyunKabuk> {
   }
 
   Widget _govde(BuildContext c) {
+    // TANITIM İLK: borsayı bilmeyen biri zorluk ekranında "8 hisse ·
+    // 50.000 ₺" satırını okuyup ne yapacağını bilemiyordu. Dört adım,
+    // bir kez çıkıyor, `?` ile geri geliyor.
+    if (_tanitim || ipucu.gorunur('tanitim')) {
+      return OyunTanitim(bitti: () {
+        if (mounted) setState(() => _tanitim = false);
+      });
+    }
     if (_aciliyor) {
       return OyunAcilis(
         // Gerçek iş: kayıtlı oyunun piyasası üretiliyor. Yeni oyunda
@@ -83,7 +96,11 @@ class _OyunKabukDurum extends State<OyunKabuk> {
         },
       );
     }
-    if (!oyun.basladi) return OyunBaslangic(cikis: _cik, baslat: _yeniOyun);
+    if (!oyun.basladi) {
+      return OyunBaslangic(
+          cikis: _cik, baslat: _yeniOyun,
+          tanitim: () => setState(() => _tanitim = true));
+    }
     if (oyun.hata != null && !oyun.piyasaHazir) {
       return Padding(
         padding: const EdgeInsets.all(16),
@@ -134,8 +151,8 @@ class _OyunKabukDurum extends State<OyunKabuk> {
                       fontWeight: FontWeight.w700, letterSpacing: 1.2)),
             ),
             const SizedBox(width: 8),
-            Text('${oyun.zorluk.toUpperCase()} · GÜN '
-                '${oyun.gun + 1}/${oyun.gunSayisi}',
+            Text('${oyun.zorluk.toUpperCase()} · '
+                '${oyun.gunSayisi - oyun.gun - 1} GÜN KALDI',
                 style: const TextStyle(
                     color: OyunRenk.metinSolgun, fontSize: 11,
                     letterSpacing: 0.8)),
@@ -302,15 +319,28 @@ class _OyunKabukDurum extends State<OyunKabuk> {
 
 class OyunBaslangic extends StatelessWidget {
   final VoidCallback cikis;
+  final VoidCallback tanitim;
   final void Function(String zorluk) baslat;
-  const OyunBaslangic({super.key, required this.cikis, required this.baslat});
+  const OyunBaslangic({
+    super.key, required this.cikis, required this.baslat,
+    required this.tanitim,
+  });
 
+  // Açıklamalar borsa BİLMEYENE göre yazıldı: "testere ağzı piyasa,
+  // yalancı kırılma, geniş makas" cümlesi doğruydu ama ilk kez oynayan
+  // birine hiçbir şey söylemiyordu.
   static const _zorluklar = [
-    ('kolay', 'Kolay', 'Trendler temiz, haberler dürüst, kayma yok.',
+    ('kolay', 'Kolay',
+     'Fiyatlar düzgün yükselir ya da düşer, yönü görmek kolay. '
+     'Haberler doğru söyler. Bol paran var.',
      '8 hisse · 50.000 ₺ · 40 gün'),
-    ('normal', 'Normal', 'Gerçeğe yakın: gürültü var, haberler bazen yanıltır.',
+    ('normal', 'Normal',
+     'Fiyatlar zikzak çizer, yön her zaman belli olmaz. Haberlerin '
+     'beşte biri yanıltır. Gerçeğe en yakın olan bu.',
      '14 hisse · 25.000 ₺ · 60 gün'),
-    ('zor', 'Zor', 'Testere ağzı piyasa, yalancı kırılmalar, geniş makas.',
+    ('zor', 'Zor',
+     'Fiyat yükseliyor görünüp aniden döner. Haberlerin neredeyse '
+     'yarısı yanıltır, paran dar, takip edecek çok hisse var.',
      '22 hisse · 10.000 ₺ · 90 gün'),
   ];
 
@@ -330,6 +360,12 @@ class OyunBaslangic extends StatelessWidget {
           ),
           const Spacer(),
           IconButton(
+            icon: const Icon(Icons.help_outline_sharp, size: 19),
+            tooltip: 'Nasıl oynanır',
+            color: OyunRenk.metinSolgun,
+            onPressed: tanitim,
+          ),
+          IconButton(
             icon: const Icon(Icons.close_sharp, size: 20),
             color: OyunRenk.metinSolgun,
             onPressed: cikis,
@@ -337,9 +373,9 @@ class OyunBaslangic extends StatelessWidget {
         ]),
         const SizedBox(height: 18),
         const Not(
-          'Piyasayı biz üretiyoruz. Hisse kodları gerçek, FİYATLAR '
-          'UYDURMA — burada olan hiçbir şey gerçek borsada olmadı.\n\n'
-          'Her yeni oyun bir öncekinden farklı.',
+          'Hisse kodları gerçek ama fiyatları biz uyduruyoruz — burada '
+          'olan hiçbir şey gerçek borsada olmadı.\n\n'
+          'Her yeni oyun bir öncekinden farklı olur.',
           ikon: Icons.casino_sharp, renk: OyunRenk.aksan,
         ),
         const SizedBox(height: 20),

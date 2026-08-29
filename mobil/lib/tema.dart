@@ -461,6 +461,9 @@ ThemeData _oyunTema() {
       labelStyle: const TextStyle(color: OyunRenk.metinSolgun),
       hintStyle: const TextStyle(color: OyunRenk.metinSonuk),
       helperStyle: const TextStyle(color: OyunRenk.metinSonuk),
+      // Oyunun yardım metinleri tam cümle: tek satırda kırpılıyorlardı
+      // ("Önerilen adet, kaybedeceğin parayı sınırlayac…").
+      helperMaxLines: 3,
     ),
     navigationBarTheme: t.navigationBarTheme.copyWith(
       backgroundColor: OyunRenk.panel,

@@ -28,10 +28,14 @@ class OyunPortfoy extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('PORTFÖY DEĞERİ',
+                  const Text('PARANIN GİDİŞATI',
                       style: TextStyle(
                           color: OyunRenk.aksan, fontSize: 10.5,
                           letterSpacing: 1.3)),
+                  const SizedBox(height: 3),
+                  const Text('nakit + elindeki hisselerin bugünkü değeri',
+                      style: TextStyle(
+                          color: OyunRenk.metinSonuk, fontSize: 11)),
                   const SizedBox(height: 10),
                   FiyatGrafik(
                     [
@@ -51,9 +55,11 @@ class OyunPortfoy extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Kutu(
-              child: Text('Pozisyonun yok. Borsa sekmesinden hisse al ya da '
-                  'Analist\'in önerisine bak.',
-                  style: TextStyle(color: OyunRenk.metinSolgun, height: 1.5)),
+              child: Text(
+                  'Henüz hisse almadın.\n\n'
+                  'Borsa sekmesinden bir hisse seç, ya da Analist\'in '
+                  'bugün önerdiklerine bak.',
+                  style: TextStyle(color: OyunRenk.metinSolgun, height: 1.55)),
             ),
           )
         else
@@ -501,15 +507,20 @@ class OyunAnalist extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('ANALİSTİN SİCİLİ',
+                const Text('ANALİST NE KADAR TUTTURDU',
                     style: TextStyle(
                         color: OyunRenk.aksan, fontSize: 10.5,
                         letterSpacing: 1.3)),
-                const SizedBox(height: 8),
-                Satir('Hedefe giden', '${sicil.hedef}',
+                const SizedBox(height: 3),
+                const Text('bugüne kadar önerdiği hisseler ne oldu',
+                    style: TextStyle(
+                        color: OyunRenk.metinSonuk, fontSize: 11)),
+                const SizedBox(height: 10),
+                Satir('Kâra geçen öneri', '${sicil.hedef}',
                     renk: Sem(c).arti),
-                Satir('Stopa giden', '${sicil.stop}', renk: Sem(c).eksi),
-                Satir('Hâlâ açık', '${sicil.acik}'),
+                Satir('Zararla biten öneri', '${sicil.stop}',
+                    renk: Sem(c).eksi),
+                Satir('Sonucu belli olmayan', '${sicil.acik}'),
                 if (sicil.hedef + sicil.stop > 0) ...[
                   const SizedBox(height: 4),
                   Satir('Tutturma oranı',
@@ -517,9 +528,10 @@ class OyunAnalist extends StatelessWidget {
                 ],
                 const SizedBox(height: 8),
                 const Text(
-                    'Analist Midas\'ın gerçek stratejileriyle çalışıyor. '
-                    'Her sinyali uygulamak zorunda değilsin — hangisine '
-                    'güveneceğini burada öğren.',
+                    'Analist, Midas\'ın gerçek kurallarıyla çalışıyor ama '
+                    'her zaman haklı değil. Önerilerini uygulamak zorunda '
+                    'değilsin — ne kadar güveneceğine buradaki sayılara '
+                    'bakarak karar ver.',
                     style: TextStyle(
                         color: OyunRenk.metinSolgun, fontSize: 11.5,
                         height: 1.5)),
@@ -533,9 +545,12 @@ class OyunAnalist extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Kutu(
-              child: Text('Bugün sinyal yok. Nakitte beklemek de bir '
-                  'pozisyondur.',
-                  style: TextStyle(color: OyunRenk.metinSolgun)),
+              child: Text(
+                  'Analist bugün bir şey önermiyor.\n\n'
+                  'Her gün alım yapmak zorunda değilsin; beklemek de '
+                  'bir karardır.',
+                  style: TextStyle(
+                      color: OyunRenk.metinSolgun, height: 1.55)),
             ),
           )
         else
@@ -838,14 +853,28 @@ class _OyunAlimDurum extends State<OyunAlim> {
                   Text(h?.ad ?? widget.kod,
                       style: Theme.of(c).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  Satir('Kapanış', '${tl(f)} ₺'),
-                  if (oyun.kaymaBp > 0) ...[
-                    Satir('Kayma (%${(oyun.kaymaBp / 100).toStringAsFixed(2)})',
+                  Satir('Bugünkü fiyatı', '${tl(f)} ₺'),
+                  // Kayma satırları LİMİT modunda gizli: limit emrinde
+                  // kayma yok ve göstermek yanlış öğretirdi.
+                  if (oyun.kaymaBp > 0 && !_limitMi) ...[
+                    Satir('Üstüne binen fark',
                         '+${tl((kaymali ?? 0) - (f ?? 0))} ₺'),
-                    Satir('Girişin', '${tl(kaymali)} ₺', kalin: true),
+                    Satir('Senin ödeyeceğin', '${tl(kaymali)} ₺',
+                        kalin: true),
                   ],
-                  Satir('ATR (günlük tipik hareket)', '${tl(_atr)} ₺'),
-                  Satir('Nakit', '${tl(oyun.nakit)} ₺'),
+                  Satir('Günde tipik olarak oynadığı', '${tl(_atr)} ₺'),
+                  Satir('Harcayabileceğin para',
+                      '${tl(oyun.kullanilabilirNakit)} ₺'),
+                  if (oyun.kaymaBp > 0 && !_limitMi) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                        'Emrin tam listelenen fiyattan gerçekleşmez; '
+                        'alırken biraz yukarıdan, satarken biraz '
+                        'aşağıdan dolar. Bu fark her işlemde vardır.',
+                        style: TextStyle(
+                            color: OyunRenk.metinSonuk, fontSize: 11.5,
+                            height: 1.45)),
+                  ],
                 ],
               ),
             ),
@@ -870,8 +899,8 @@ class _OyunAlimDurum extends State<OyunAlim> {
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
-                    labelText: 'Limit fiyatın',
-                    helperText: 'Bu fiyata gelirse dolar · kayma yok'),
+                    labelText: 'Kaça almak istersin',
+                    helperText: 'Fiyat buraya düşerse emrin dolar'),
                 onChanged: (_) => setState(() {}),
               ),
             ],
@@ -881,7 +910,8 @@ class _OyunAlimDurum extends State<OyunAlim> {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
-                  labelText: 'Stop', helperText: 'Önerilen: giriş − 2 ATR'),
+                  labelText: 'Stop — buraya düşerse çık',
+                  helperText: 'Kaybı sınırlar. Önerilen fiyat hazır yazıldı.'),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 11),
@@ -890,30 +920,42 @@ class _OyunAlimDurum extends State<OyunAlim> {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
-                  labelText: 'Hedef', helperText: 'Önerilen: giriş + 3,5 ATR'),
+                  labelText: 'Hedef — buraya çıkarsa sat',
+                  helperText: 'Kârı cebe koyar. Önerilen fiyat hazır yazıldı.'),
               onChanged: (_) => setState(() {}),
             ),
             if (kaymali != null && stop != null && hedef != null &&
                 stop < kaymali && hedef > kaymali) ...[
               const SizedBox(height: 6),
-              Text('ödül/risk: '
-                  '${_ond((hedef - kaymali) / (kaymali - stop), 1)}',
-                  style: const TextStyle(color: OyunRenk.aksan, fontSize: 12)),
+              Builder(builder: (_) {
+                final oran = (hedef - kaymali) / (kaymali - stop);
+                return Text(
+                    'Tutarsa ${_ond(oran, 1)} katını kazanırsın, '
+                    'tutmazsa 1 birim kaybedersin',
+                    style: TextStyle(
+                        color: oran >= 1.5 ? OyunRenk.aksan : sem.uyari,
+                        fontSize: 11.5, height: 1.4));
+              }),
             ],
             const SizedBox(height: 11),
             TextField(
               controller: _adet,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Adet'),
+              decoration: const InputDecoration(
+                  labelText: 'Kaç adet alacaksın',
+                  helperText: 'Önerilen adet, kaybedeceğin parayı '
+                      'sınırlayacak şekilde hesaplandı.'),
               onChanged: (_) => setState(() {}),
             ),
             if (kaymali != null && adet > 0) ...[
               const SizedBox(height: 6),
-              Text('tutar ${tl(adet * kaymali)} ₺'
+              Text('Cebinden çıkacak: ${tl(adet * kaymali)} ₺'
                   '${stop != null && stop < kaymali
-                      ? '  ·  riskin ${tl(adet * (kaymali - stop))} ₺' : ''}',
+                      ? '\nEn kötü ihtimalle kaybın: '
+                          '${tl(adet * (kaymali - stop))} ₺' : ''}',
                   style: const TextStyle(
-                      color: OyunRenk.metinSolgun, fontSize: 11.5)),
+                      color: OyunRenk.metinSolgun, fontSize: 11.5,
+                      height: 1.5)),
             ],
             if (_hata != null) ...[
               const SizedBox(height: 12),
@@ -1088,12 +1130,19 @@ class OyunEmirler extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Satir('Nakit', '${tl(oyun.nakit)} ₺'),
-                Satir('Bekleyen emirlerde bloke',
+                Satir('Toplam paran', '${tl(oyun.nakit)} ₺'),
+                Satir('Bekleyen emirler için ayrıldı',
                     '${tl(oyun.blokeNakit)} ₺',
                     renk: oyun.blokeNakit > 0 ? OyunRenk.aksan : null),
-                Satir('Kullanılabilir', '${tl(oyun.kullanilabilirNakit)} ₺',
-                    kalin: true),
+                Satir('Şu an harcayabileceğin',
+                    '${tl(oyun.kullanilabilirNakit)} ₺', kalin: true),
+                const SizedBox(height: 8),
+                const Text(
+                    'Bekleyen bir emrin varsa o para ayrılır: emir '
+                    'dolarsa harcanır, dolmazsa geri gelir.',
+                    style: TextStyle(
+                        color: OyunRenk.metinSonuk, fontSize: 11.5,
+                        height: 1.45)),
               ],
             ),
           ),
@@ -1106,9 +1155,10 @@ class OyunEmirler extends StatelessWidget {
             child: Kutu(
               child: Text(
                   'Bekleyen emrin yok.\n\n'
-                  'Bir hisseye girip "LİMİT EMRİ" verirsen fiyatı sen '
-                  'belirlersin: kayma yemezsin ama fiyat sana gelmezse '
-                  'emir hiç dolmaz.',
+                  'Bir hisseyi ŞU ANKİ fiyatından değil, daha ucuza almak '
+                  'istersen "LİMİT" emri verirsin: istediğin fiyatı '
+                  'yazarsın, fiyat oraya düşerse emrin kendiliğinden '
+                  'dolar. Düşmezse hiçbir şey olmaz.',
                   style: TextStyle(
                       color: OyunRenk.metinSolgun, height: 1.55)),
             ),
@@ -1150,13 +1200,13 @@ class _EmirKarti extends StatelessWidget {
                     fontSize: 11)),
           ]),
           const SizedBox(height: 9),
-          Satir('Emir fiyatın', '${tl(e.fiyat)} ₺'),
-          Satir('Şu anki fiyat', '${tl(simdi)} ₺'),
+          Satir('Almak istediğin fiyat', '${tl(e.fiyat)} ₺'),
+          Satir('Hissenin şu anki fiyatı', '${tl(simdi)} ₺'),
           if (uzaklik != null)
             Satir('Dolması için',
                 '%${_ond(uzaklik.abs(), 1)} düşmeli',
                 renk: sem.uyari),
-          Satir('${e.adet} adet · bloke', '${tl(e.bloke)} ₺'),
+          Satir('${e.adet} adet · ayrılan para', '${tl(e.bloke)} ₺'),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
@@ -1234,10 +1284,10 @@ class _OyunSonu extends StatelessWidget {
           const SizedBox(height: 16),
 
           Row(children: [
-            Expanded(child: _kutu(c, 'SENİN', yzd(k.getiri, basamak: 1),
-                sem.yon(k.getiri))),
+            Expanded(child: _kutu(c, 'SEN KAZANDIN',
+                yzd(k.getiri, basamak: 1), sem.yon(k.getiri))),
             const SizedBox(width: 10),
-            Expanded(child: _kutu(c, 'HİÇBİR ŞEY YAPMASAN',
+            Expanded(child: _kutu(c, 'HİÇ İŞLEM YAPMASAN',
                 yzd(k.endeksGetiri, basamak: 1),
                 sem.yon(k.endeksGetiri))),
           ]),
@@ -1246,17 +1296,19 @@ class _OyunSonu extends StatelessWidget {
               style: Theme.of(c).textTheme.bodyMedium?.copyWith(height: 1.55)),
           const SizedBox(height: 18),
 
-          Satir('İşlem sayısı', '${k.islem}'),
-          Satir('Kazanan işlem',
+          Satir('Kaç kez alıp sattın', '${k.islem}'),
+          Satir('Kaçında kâr ettin',
               k.islem > 0
                   ? '${k.kazanan} / ${k.islem}  '
                       '(%${(k.kazanan / k.islem * 100).toStringAsFixed(0)})'
                   : '—'),
           if (k.enIyiKod.isNotEmpty)
-            Satir('En iyi', '${k.enIyiKod}  ${yzd(k.enIyi, basamak: 1)}',
+            Satir('En iyi işlemin',
+                '${k.enIyiKod}  ${yzd(k.enIyi, basamak: 1)}',
                 renk: sem.arti),
           if (k.enKotuKod.isNotEmpty)
-            Satir('En kötü', '${k.enKotuKod}  ${yzd(k.enKotu, basamak: 1)}',
+            Satir('En kötü işlemin',
+                '${k.enKotuKod}  ${yzd(k.enKotu, basamak: 1)}',
                 renk: sem.eksi),
 
           const SizedBox(height: 20),
@@ -1328,10 +1380,10 @@ class _EmirTuru extends StatelessWidget {
           const SizedBox(height: 7),
           Text(
               limitMi
-                  ? 'Fiyatı sen belirlersin, kayma yemezsin — ama fiyat '
-                      'sana gelmezse emir hiç dolmaz.'
-                  : 'Hemen dolar ama fiyatı sen belirlemezsin; kayma '
-                      'aleyhine işler.',
+                  ? 'Kaça almak istediğini sen yazarsın. Fiyat oraya '
+                      'düşerse alırsın, düşmezse alamazsın.'
+                  : 'Bugünkü fiyattan hemen alırsın. Kesin olur ama '
+                      'fiyatı seçemezsin.',
               style: const TextStyle(
                   color: OyunRenk.metinSonuk, fontSize: 11.5, height: 1.45)),
         ],
