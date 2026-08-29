@@ -10,6 +10,7 @@ import 'ayarlar.dart';
 import 'ilerleme.dart';
 import 'gun_ozeti.dart';
 import 'defter.dart';
+import 'tezler.dart';
 import 'karne.dart';
 import 'sermaye.dart';
 import 'sozluk.dart';
@@ -37,6 +38,12 @@ class DahaEkran extends StatelessWidget {
       (Icons.menu_book_sharp, 'Karar defterin',
           'Senin kararların — sistemi takip mi ettin, kendi fikrin mi',
           const DefterEkran()),
+      // Karar defterinin YANINDA: tez "neden aldım"ın yazılı hâli ve
+      // defterle birlikte okunuyor. Alt sekmeden buraya indi — günde bir
+      // kez bakılıyor ve alım anında zaten kendiliğinden açılıyor.
+      (Icons.description_sharp, 'Tezlerin',
+          'Neden aldım · alım anında yazılır, çıkışta okunur',
+          const TezlerEkran()),
       // Sayılar müfredattan okunuyor: sabit yazıldığında iki kez eskidi
       // (65 → 72 → 76) ve ikisini de ancak gözle bakınca fark ettik.
       (Icons.school_sharp, 'Eğitmen',

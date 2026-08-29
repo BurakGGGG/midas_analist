@@ -8,11 +8,17 @@ import 'bugun.dart';
 import 'tarama.dart';
 import 'portfoy.dart';
 import 'tezler.dart';
+import 'sanal.dart';
 import 'daha.dart';
 
 /// Alt sekmeler. Sıra günlük akışı izler: bugün ne var → ara → neyim var
-/// → neden aldım. `index` NavigationBar'ın beklediği sırayla aynı.
-enum Sekme { bugun, tarama, portfoy, tezler, daha }
+/// → denemek istersem. `index` NavigationBar'ın beklediği sırayla aynı.
+///
+/// TEZLER BURADA DEĞİL, "Daha"nın altında. Beş sekme Material'ın pratik
+/// tavanı — altıncısı etiketleri kırpar. Tezler günde bir kez bakılan ve
+/// alım anında zaten kendiliğinden açılan bir ekran; Sanal İşlem ise
+/// öğrenirken günde birkaç kez açılıyor.
+enum Sekme { bugun, tarama, portfoy, sanal, daha }
 
 /// Seçili sekme — tek doğruluk kaynağı.
 ///
@@ -42,7 +48,10 @@ void _ekranaGit(BuildContext c, String ad) {
     case 'portfoy':
       sekmeyeGit(c, Sekme.portfoy);
     case 'tezler':
-      sekmeyeGit(c, Sekme.tezler);
+      // Sekme değil, sayfa: Tezler "Daha"nın altına indi.
+      Navigator.push(c, MaterialPageRoute(builder: (_) => const TezlerEkran()));
+    case 'sanal':
+      sekmeyeGit(c, Sekme.sanal);
     case 'makro':
       Navigator.push(c, MaterialPageRoute(builder: (_) => const MakroEkran()));
     case 'gun_ozeti':
@@ -62,7 +71,7 @@ class Kabuk extends StatefulWidget {
 
 class _KabukDurum extends State<Kabuk> {
   static const _ekranlar = [BugunEkran(), TaramaEkran(), PortfoyEkran(),
-                            TezlerEkran(), DahaEkran()];
+                            SanalEkran(), DahaEkran()];
 
   @override
   void initState() {
@@ -119,8 +128,8 @@ class _KabukDurum extends State<Kabuk> {
                 icon: Icon(Icons.account_balance_wallet_sharp),
                 selectedIcon: Icon(Icons.account_balance_wallet_sharp), label: 'Portföy'),
             NavigationDestination(
-                icon: Icon(Icons.description_sharp),
-                selectedIcon: Icon(Icons.description_sharp), label: 'Tezler'),
+                icon: Icon(Icons.science_sharp),
+                selectedIcon: Icon(Icons.science_sharp), label: 'Sanal'),
             NavigationDestination(
                 icon: Icon(Icons.grid_view_sharp),
                 selectedIcon: Icon(Icons.grid_view_sharp), label: 'Daha'),

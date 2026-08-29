@@ -34,6 +34,9 @@ import 'package:midas_analist/ekran/gun_ozeti.dart';
 import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
 import 'package:midas_analist/ekran/tezler.dart';
+import 'package:midas_analist/ekran/sanal.dart';
+import 'package:midas_analist/servis/sanal.dart' show sanal, SanalHesap;
+import 'package:midas_analist/servis/semboller.dart' show semboller, Sembol;
 import 'package:midas_analist/ekran/hesap.dart';
 import 'package:midas_analist/ekran/portfoy.dart';
 import 'package:midas_analist/ekran/tarama.dart';
@@ -253,6 +256,63 @@ class _SahteApi extends Api {
             'aciklama': 'Alım kaydedildi.', 'ders': 'd1201',
           },
         ],
+      };
+
+  @override
+  Future<Map<String, dynamic>> alistirmaGun(String sembol,
+          {String? tarih}) async =>
+      {
+        'tarih': tarih ?? '2024-06-12', 'acilis': 310.0, 'yuksek': 315.0,
+        'dusuk': 308.0, 'kapanis': 312.00, 'onceki_kapanis': 309.0,
+        'atr': 7.80, 'tavan_mi': false,
+      };
+
+  @override
+  Future<Map<String, dynamic>> alistirmaAdet(
+          double bakiye, double fiyat, double stop,
+          {double riskYuzde = 1.5, double azamiPozisyon = 35.0}) async =>
+      {
+        'adet': 9, 'risk_butcesi': 150.0, 'hisse_basi_risk': 16.07,
+        'maliyet': 2808.0, 'baglayici': 'risk bütçesi',
+      };
+
+  @override
+  Future<Map<String, dynamic>> sanalAralik() async =>
+      {'en_erken': '2023-02-06', 'en_gec': '2026-08-27', 'gun_sayisi': 890};
+
+  @override
+  Future<Map<String, dynamic>> sanalDeger(String tarih, double nakit,
+          List<Map<String, dynamic>> pozisyonlar) async =>
+      {
+        'tarih': tarih, 'nakit': nakit, 'piyasa': 8255.84,
+        'ozkaynak': nakit + 8255.84, 'maliyet': 8000.0,
+        'acik_kar': 255.84, 'acik_kar_yuzde': 3.2,
+        'satirlar': [
+          {'sembol': 'THYAO', 'adet': 4, 'giris': 312.47, 'fiyat': 328.50,
+           'kar': 64.12, 'kar_yuzde': 5.1, 'stop': 296.40, 'hedef': 351.00,
+           'stop_uzaklik': 9.8, 'hedef_uzaklik': 6.8, 'veri_var': true},
+          {'sembol': 'GESAN', 'adet': 20, 'giris': 92.34, 'fiyat': 90.60,
+           'kar': -34.80, 'kar_yuzde': -1.9, 'stop': 88.70, 'hedef': 105.20,
+           'stop_uzaklik': 1.8, 'hedef_uzaklik': 16.1, 'veri_var': true},
+        ],
+      };
+
+  @override
+  Future<Map<String, dynamic>> sanalSinyaller(String tarih,
+          {double sermaye = 10000, int azami = 8}) async =>
+      {
+        'tarih': tarih,
+        'sinyaller': [
+          {'sembol': 'TAVHL', 'strateji': 'trend', 'skor': 79,
+           'fiyat': 237.81, 'stop': 219.60, 'hedef': 268.40, 'adet': 8,
+           'maliyet': 1902.48, 'risk_tl': 145.68, 'alinabilir': true,
+           'uyari': '', 'vade': '1-2 hafta'},
+          {'sembol': 'HALKB', 'strateji': 'trend', 'skor': 77,
+           'fiyat': 18.36, 'stop': 16.75, 'hedef': 21.06, 'adet': 93,
+           'maliyet': 1707.48, 'risk_tl': 149.73, 'alinabilir': true,
+           'uyari': '', 'vade': '1-2 hafta'},
+        ],
+        'toplam': 2,
       };
 
   @override
@@ -596,6 +656,80 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/alistirma_bitis.png'));
+  });
+
+  // ── Sanal İşlem ──────────────────────────────────────────────────────────
+
+  Future<void> sanalKur(Map<String, dynamic>? j) async {
+    SharedPreferences.setMockInitialValues(
+        j == null ? {} : {SanalHesap.anahtar: jsonEncode(j)});
+    await depo.yukle();
+    await sanal.yukle();
+    semboller.hisseler = const [
+      Sembol(kod: 'THYAO', ad: 'Türk Hava Yolları', izleniyor: true,
+          terimler: ['THYAO', 'TURK HAVA YOLLARI', 'THY']),
+      Sembol(kod: 'GESAN', ad: 'Girişim Elektrik', izleniyor: true,
+          terimler: ['GESAN', 'GIRISIM ELEKTRIK']),
+    ];
+  }
+
+  testWidgets('sanal_kurulum', (t) async {
+    await sanalKur(null);
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1150));
+    await t.pumpWidget(_sarmala(const SanalEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/sanal_kurulum.png'));
+  });
+
+  testWidgets('sanal_ana', (t) async {
+    await sanalKur({
+      'tarih': '2024-06-28', 'baslangicTarih': '2024-06-12',
+      'nakit': 2156.20, 'baslangicSermaye': 10000.0,
+      'pozisyonlar': [
+        {'sembol': 'THYAO', 'adet': 4, 'giris': 312.47, 'stop': 296.40,
+         'hedef': 351.00, 'tarih': '2024-06-12'},
+        {'sembol': 'GESAN', 'adet': 20, 'giris': 92.34, 'stop': 88.70,
+         'hedef': 105.20, 'tarih': '2024-06-18'},
+      ],
+      'kapali': [
+        {'sembol': 'EREGL', 'adet': 20, 'giris': 23.40, 'cikis': 25.76,
+         'girisTarih': '2024-06-12', 'cikisTarih': '2024-06-20',
+         'sebep': 'hedef'},
+      ],
+      'ozkaynak': [
+        {'t': '2024-06-12', 'd': 10000.0}, {'t': '2024-06-14', 'd': 9880.0},
+        {'t': '2024-06-18', 'd': 10120.0}, {'t': '2024-06-20', 'd': 10310.0},
+        {'t': '2024-06-24', 'd': 10190.0}, {'t': '2024-06-28', 'd': 10412.04},
+      ],
+      'sonDeger': null,
+    });
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 2400));
+    await t.pumpWidget(_sarmala(const SanalEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/sanal_ana.png'));
+  });
+
+  testWidgets('sanal_alim', (t) async {
+    await sanalKur({
+      'tarih': '2024-06-12', 'baslangicTarih': '2024-06-12',
+      'nakit': 10000.0, 'baslangicSermaye': 10000.0,
+      'pozisyonlar': [], 'kapali': [],
+      'ozkaynak': [{'t': '2024-06-12', 'd': 10000.0}],
+    });
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 2100));
+    await t.pumpWidget(_sarmala(
+        const SanalAlimEkran(sembol: 'THYAO')));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/sanal_alim.png'));
   });
 
   // ── hiç bakılmamış ekranlar ──────────────────────────────────────────────

@@ -87,9 +87,9 @@ void main() {
 
     test('enum sırası NavigationBar sırasıyla aynı', () {
       // Kabuk selectedIndex olarak enum index'ini veriyor; sıra kayarsa
-      // Portföy'e gitmek isteyen kullanıcı Tezler'e düşer.
+      // Portföy'e gitmek isteyen kullanıcı başka ekrana düşer.
       expect(Sekme.values.map((e) => e.name).toList(),
-          ['bugun', 'tarama', 'portfoy', 'tezler', 'daha']);
+          ['bugun', 'tarama', 'portfoy', 'sanal', 'daha']);
       expect(Sekme.portfoy.index, 2);
       expect(Sekme.tarama.index, 1);
     });

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:midas_analist/servis/api.dart';
 import 'package:midas_analist/servis/depo.dart';
 import 'package:midas_analist/servis/hesap.dart';
+import 'package:midas_analist/parca/ipucu.dart';
 import 'package:midas_analist/servis/sanal.dart';
 
 /// Sanal hesap — telefonda tutulan durum.
@@ -281,5 +282,66 @@ void main() {
     _SahteApi.degerCevap = {'ozkaynak': 5500.0, 'satirlar': []};
     await sanal.degerle();
     expect(sanal.toplamGetiriYuzde, closeTo(10.0, 0.001));
+  });
+
+  _ipucuTestleri();
+}
+
+// ── ipucu balonları ────────────────────────────────────────────────────────
+
+void _ipucuTestleri() {
+  group('ipucu', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await ipucu.yukle();
+    });
+
+    test('okunmamış ipucu görünür, okunan görünmez', () async {
+      expect(ipucu.gorunur('stop'), isTrue);
+      await ipucu.okundu('stop');
+      expect(ipucu.gorunur('stop'), isFalse);
+    });
+
+    test('SIRAYLA: yalnızca ilk okunmamış olan', () async {
+      // Dört balon birden açılınca ekran metin duvarına dönüyordu.
+      const akis = ['kayma', 'stop', 'hedef', 'adet'];
+      expect(ipucu.siradaki(akis), 'kayma');
+      await ipucu.okundu('kayma');
+      expect(ipucu.siradaki(akis), 'stop');
+      await ipucu.okundu('stop');
+      await ipucu.okundu('hedef');
+      expect(ipucu.siradaki(akis), 'adet');
+      await ipucu.okundu('adet');
+      expect(ipucu.siradaki(akis), isNull);
+    });
+
+    test('okundu bilgisi diske yazılır', () async {
+      await ipucu.okundu('stop');
+      final taze = IpucuDeposu();
+      await taze.yukle();
+      expect(taze.gorunur('stop'), isFalse);
+    });
+
+    test('hepsi geri getirilebilir', () async {
+      await ipucu.okundu('stop');
+      await ipucu.okundu('hedef');
+      await ipucu.hepsiniGeriGetir();
+      expect(ipucu.gorunur('stop'), isTrue);
+      expect(ipucu.gorunur('hedef'), isTrue);
+    });
+
+    test('her ipucunun metni var', () {
+      // Kod yazılıp metni unutulursa balon sessizce hiç çıkmaz.
+      for (final k in ['stop', 'hedef', 'adet', 'kayma', 'tavan',
+                       'ilerlet', 'sinyal']) {
+        expect(ipucuMetni.containsKey(k), isTrue, reason: '$k metni yok');
+        expect(ipucuMetni[k]!.$2.length, greaterThan(60),
+            reason: '$k metni fazla kısa — tanım değil mekanizma anlatmalı');
+      }
+    });
+
+    test('bulut yedeği ipuçlarını KAPSIYOR', () {
+      expect(Hesap.yedeklenen, contains(IpucuDeposu.anahtar));
+    });
   });
 }
