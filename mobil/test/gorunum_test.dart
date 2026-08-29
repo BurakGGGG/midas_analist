@@ -34,6 +34,7 @@ import 'package:midas_analist/ekran/gun_ozeti.dart';
 import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
 import 'package:midas_analist/ekran/tezler.dart';
+import 'package:midas_analist/ekran/oyun_acilis.dart';
 import 'package:midas_analist/ekran/oyun_kabuk.dart';
 import 'package:midas_analist/ekran/oyun_ekranlar.dart';
 import 'package:midas_analist/servis/oyun.dart';
@@ -569,6 +570,43 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/oyun_portfoy.png'));
+  });
+
+  testWidgets('oyun_acilis', (t) async {
+    // Zamanlı animasyon: pumpAndSettle asla oturmaz (yanıp sönen imleç
+    // sonsuz döngüde). Sabit sayıda kare ilerletip yakalıyoruz.
+    await oyunKur(gun: 0);
+    await t.binding.setSurfaceSize(const Size(420, 800));
+    // Scaffold ŞART: Material atası olmadan Text varsayılan yazı tipine
+    // düşüyor ve testte her harf dolu kutu çıkıyor. Uygulamada bu ekran
+    // zaten Scaffold gövdesinde.
+    await t.pumpWidget(_sarmala(
+        Scaffold(body: OyunAcilis(is_: () async {}, bitti: () {})),
+        tema: temaOyun));
+    for (var i = 0; i < 8; i++) {
+      await t.pump(const Duration(milliseconds: 270));
+    }
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_acilis.png'));
+  });
+
+  testWidgets('oyun_emirler', (t) async {
+    await oyunKur(gun: 28, pozisyonlu: true);
+    final h = oyun.hisseler[4];
+    final f = oyun.fiyat(h.kod)!;
+    oyun.emirler = [
+      OyunEmir(sembol: h.kod, adet: 30, fiyat: f * 0.96,
+          stop: f * 0.90, hedef: f * 1.12, verilenGun: 26, gecerlilik: 5),
+      OyunEmir(sembol: oyun.hisseler[5].kod, adet: 8,
+          fiyat: oyun.fiyat(oyun.hisseler[5].kod)! * 0.93,
+          stop: 1, hedef: 999, verilenGun: 27, gecerlilik: 3),
+    ];
+    await t.binding.setSurfaceSize(const Size(420, 1250));
+    await t.pumpWidget(
+        _sarmala(Scaffold(body: const OyunEmirler()), tema: temaOyun));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_emirler.png'));
   });
 
   testWidgets('oyun_borsa', (t) async {

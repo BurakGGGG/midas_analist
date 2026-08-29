@@ -5,6 +5,8 @@ import '../parca/kart.dart';
 import '../servis/oyun.dart';
 import '../tema.dart';
 import 'kabuk.dart' show sekme, Sekme;
+import '../parca/oyun_animasyon.dart';
+import 'oyun_acilis.dart';
 import 'oyun_ekranlar.dart';
 
 /// Sanal İşlem'in KENDİ kabuğu.
@@ -26,10 +28,22 @@ class OyunKabuk extends StatefulWidget {
 class _OyunKabukDurum extends State<OyunKabuk> {
   int _sekme = 0;
 
+  /// Açılış dizisi bitene kadar true. Kayıtlı oyun varsa piyasa
+  /// yeniden üretilirken, yeni oyunda zorluk seçildikten sonra çalışıyor.
+  bool _aciliyor = false;
+
   @override
   void initState() {
     super.initState();
-    oyun.piyasayiGetir();
+    if (oyun.basladi && !oyun.piyasaHazir) {
+      _aciliyor = true;
+    }
+  }
+
+  Future<void> _yeniOyun(String zorluk) async {
+    setState(() => _aciliyor = true);
+    await oyun.basla(zorluk);
+    if (mounted && oyun.hata != null) setState(() => _aciliyor = false);
   }
 
   void _cik() => sekme.value = Sekme.bugun;
@@ -54,7 +68,22 @@ class _OyunKabukDurum extends State<OyunKabuk> {
   }
 
   Widget _govde(BuildContext c) {
-    if (!oyun.basladi) return OyunBaslangic(cikis: _cik);
+    if (_aciliyor) {
+      return OyunAcilis(
+        // Gerçek iş: kayıtlı oyunun piyasası üretiliyor. Yeni oyunda
+        // `_yeniOyun` zaten başlattı, burada yalnızca bitmesini bekliyoruz.
+        is_: () async {
+          if (oyun.basladi && !oyun.piyasaHazir) await oyun.piyasayiGetir();
+          while (oyun.yukleniyor) {
+            await Future.delayed(const Duration(milliseconds: 60));
+          }
+        },
+        bitti: () {
+          if (mounted) setState(() => _aciliyor = false);
+        },
+      );
+    }
+    if (!oyun.basladi) return OyunBaslangic(cikis: _cik, baslat: _yeniOyun);
     if (oyun.hata != null && !oyun.piyasaHazir) {
       return Padding(
         padding: const EdgeInsets.all(16),
@@ -71,7 +100,8 @@ class _OyunKabukDurum extends State<OyunKabuk> {
           child: IndexedStack(
             index: _sekme,
             children: const [
-              OyunPortfoy(), OyunBorsa(), OyunAnalist(), OyunHaberler(),
+              OyunPortfoy(), OyunBorsa(), OyunEmirler(), OyunAnalist(),
+              OyunHaberler(),
             ],
           ),
         ),
@@ -215,19 +245,10 @@ class _OyunKabukDurum extends State<OyunKabuk> {
   }
 
   Future<void> _ilerlet(int adim) async {
-    final kapanan = oyun.ilerlet(adim: adim);
+    final ozet = oyun.ilerlet(adim: adim);
     if (!mounted) return;
-    if (kapanan.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      backgroundColor: OyunRenk.panelUst,
-      content: Text(
-        kapanan
-            .map((k) => '${k.sembol} ${k.sebep} '
-                '(${k.kar >= 0 ? '+' : ''}${tl(k.kar)} ₺)')
-            .join(' · '),
-        style: const TextStyle(color: OyunRenk.metin),
-      ),
-    ));
+    await gunOzetiGoster(context, ozet);
+    if (mounted && oyun.bitti) await oyunSonuGoster(context);
   }
 
   // ── alt çubuk ────────────────────────────────────────────────────────────
@@ -238,13 +259,22 @@ class _OyunKabukDurum extends State<OyunKabuk> {
       selectedIndex: _sekme,
       onDestinationSelected: (v) {
         setState(() => _sekme = v);
-        if (v == 3) oyun.haberleriOkudum();
+        if (v == 4) oyun.haberleriOkudum();
       },
       destinations: [
         const NavigationDestination(
             icon: Icon(Icons.account_balance_wallet_sharp), label: 'Portföy'),
         const NavigationDestination(
             icon: Icon(Icons.show_chart_sharp), label: 'Borsa'),
+        NavigationDestination(
+            icon: Badge(
+              isLabelVisible: oyun.emirler.isNotEmpty,
+              backgroundColor: OyunRenk.aksan,
+              textColor: OyunRenk.zemin,
+              label: Text('${oyun.emirler.length}'),
+              child: const Icon(Icons.pending_actions_sharp),
+            ),
+            label: 'Emirler'),
         NavigationDestination(
             icon: Badge(
               isLabelVisible: oyun.bugunSinyaller.isNotEmpty,
@@ -272,7 +302,8 @@ class _OyunKabukDurum extends State<OyunKabuk> {
 
 class OyunBaslangic extends StatelessWidget {
   final VoidCallback cikis;
-  const OyunBaslangic({super.key, required this.cikis});
+  final void Function(String zorluk) baslat;
+  const OyunBaslangic({super.key, required this.cikis, required this.baslat});
 
   static const _zorluklar = [
     ('kolay', 'Kolay', 'Trendler temiz, haberler dürüst, kayma yok.',
@@ -285,9 +316,6 @@ class OyunBaslangic extends StatelessWidget {
 
   @override
   Widget build(BuildContext c) {
-    if (oyun.yukleniyor) {
-      return const Yukleniyor(mesaj: 'Piyasa üretiliyor');
-    }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       children: [
@@ -323,7 +351,7 @@ class OyunBaslangic extends StatelessWidget {
         ..._zorluklar.map((z) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Kutu(
-                tikla: () => oyun.basla(z.$1),
+                tikla: () => baslat(z.$1),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../parca/grafik.dart';
 import '../parca/kart.dart';
+import '../parca/oyun_animasyon.dart';
 import '../servis/oyun.dart';
 import '../tema.dart';
 
@@ -311,6 +312,11 @@ class _OyunBorsaDurum extends State<OyunBorsa> {
                         ],
                       ),
                     ),
+                    // Son 30 günün minik grafiği: listeyi tararken
+                    // "yükseliyor mu düşüyor mu" sorusu tek bakışta
+                    // cevaplanmalı, her hisseye girmeden.
+                    _Kivilcim(kod: h.kod),
+                    const SizedBox(width: 10),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -712,7 +718,12 @@ class _OyunAlimDurum extends State<OyunAlim> {
   final _adet = TextEditingController();
   final _stop = TextEditingController();
   final _hedef = TextEditingController();
+  final _limit = TextEditingController();
   String? _hata;
+
+  /// false = piyasa emri (hemen dolar, kayma yer)
+  /// true  = limit emri (fiyatı sen belirlersin, dolmayabilir)
+  bool _limitMi = false;
 
   /// Sistemin kendi kuralı: stop 2 ATR altı, hedef 3,5 ATR üstü.
   /// ATR yerine son 14 günün ortalama gerçek aralığı hesaplanıyor —
@@ -769,7 +780,7 @@ class _OyunAlimDurum extends State<OyunAlim> {
 
   @override
   void dispose() {
-    for (final x in [_adet, _stop, _hedef]) {
+    for (final x in [_adet, _stop, _hedef, _limit]) {
       x.dispose();
     }
     super.dispose();
@@ -777,6 +788,31 @@ class _OyunAlimDurum extends State<OyunAlim> {
 
   double? _oku(TextEditingController k) =>
       double.tryParse(k.text.trim().replaceAll(',', '.'));
+
+  Future<void> _gonder(int adet, double? stop, double? hedef) async {
+    final limit = _oku(_limit);
+    final hata = _limitMi
+        ? oyun.emirVer(widget.kod, adet, limit ?? 0, stop ?? 0, hedef ?? 0)
+        : oyun.al(widget.kod, adet, stop ?? 0, hedef ?? 0);
+    if (hata != null) {
+      setState(() => _hata = hata);
+      return;
+    }
+    final f = _limitMi
+        ? (limit ?? 0)
+        : (oyun.pozisyonlar
+                .where((p) => p.sembol == widget.kod)
+                .firstOrNull
+                ?.giris ??
+            0);
+    if (!mounted) return;
+    await emirAnimasyonu(
+      context,
+      sonuc: _limitMi ? EmirSonucu.beklemede : EmirSonucu.gerceklesti,
+      sembol: widget.kod, adet: adet, fiyat: f,
+    );
+    if (mounted) Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext c) {
@@ -813,6 +849,32 @@ class _OyunAlimDurum extends State<OyunAlim> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            _EmirTuru(
+              limitMi: _limitMi,
+              degisti: (v) {
+                setState(() {
+                  _limitMi = v;
+                  if (v && _limit.text.trim().isEmpty && f != null) {
+                    // Varsayılan: bugünkü fiyatın %2 altı. Kullanıcının
+                    // "ne yazacağım" diye takılmaması için bir başlangıç.
+                    _limit.text = _ond(f * 0.98);
+                  }
+                });
+              },
+            ),
+            if (_limitMi) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _limit,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                    labelText: 'Limit fiyatın',
+                    helperText: 'Bu fiyata gelirse dolar · kayma yok'),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
             const SizedBox(height: 14),
             TextField(
               controller: _stop,
@@ -835,7 +897,7 @@ class _OyunAlimDurum extends State<OyunAlim> {
                 stop < kaymali && hedef > kaymali) ...[
               const SizedBox(height: 6),
               Text('ödül/risk: '
-                  '${((hedef - kaymali) / (kaymali - stop)).toStringAsFixed(1)}',
+                  '${_ond((hedef - kaymali) / (kaymali - stop), 1)}',
                   style: const TextStyle(color: OyunRenk.aksan, fontSize: 12)),
             ],
             const SizedBox(height: 11),
@@ -862,19 +924,12 @@ class _OyunAlimDurum extends State<OyunAlim> {
               width: double.infinity,
               height: 46,
               child: FilledButton(
-                onPressed: () {
-                  final h = oyun.al(widget.kod, adet, stop ?? 0, hedef ?? 0);
-                  if (h != null) {
-                    setState(() => _hata = h);
-                    return;
-                  }
-                  Navigator.pop(context);
-                },
+                onPressed: () => _gonder(adet, stop, hedef),
                 style: FilledButton.styleFrom(
                     backgroundColor: OyunRenk.aksan,
                     foregroundColor: OyunRenk.zemin,
                     shape: const RoundedRectangleBorder(borderRadius: kose)),
-                child: const Text('AL'),
+                child: Text(_limitMi ? 'EMRİ VER' : 'AL'),
               ),
             ),
           ],
@@ -884,7 +939,8 @@ class _OyunAlimDurum extends State<OyunAlim> {
   }
 }
 
-String _ond(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
+String _ond(double v, [int basamak = 2]) =>
+    v.toStringAsFixed(basamak).replaceAll('.', ',');
 
 // ══════════════════════════════════════════════════════════ diyaloglar
 
@@ -1008,4 +1064,367 @@ class _StopDialogDurum extends State<_StopDialog> {
           ),
         ],
       );
+}
+
+// ══════════════════════════════════════════════════════════ EMİRLER
+
+/// Bekleyen limit emirleri.
+///
+/// Piyasa emri kaymayı yer ama kesin dolar; limit emri kaymadan kaçar
+/// ama dolmayabilir. Bu takas ancak yaşayarak öğreniliyor — o yüzden
+/// kendi sekmesi var ve dolmayan emirler de burada, süresi dolarak
+/// gözünün önünde kayboluyor.
+class OyunEmirler extends StatelessWidget {
+  const OyunEmirler({super.key});
+
+  @override
+  Widget build(BuildContext c) {
+    return ListView(
+      padding: const EdgeInsets.only(top: 6, bottom: 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Kutu(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Satir('Nakit', '${tl(oyun.nakit)} ₺'),
+                Satir('Bekleyen emirlerde bloke',
+                    '${tl(oyun.blokeNakit)} ₺',
+                    renk: oyun.blokeNakit > 0 ? OyunRenk.aksan : null),
+                Satir('Kullanılabilir', '${tl(oyun.kullanilabilirNakit)} ₺',
+                    kalin: true),
+              ],
+            ),
+          ),
+        ),
+
+        const Baslik('Bekleyen emirler'),
+        if (oyun.emirler.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Kutu(
+              child: Text(
+                  'Bekleyen emrin yok.\n\n'
+                  'Bir hisseye girip "LİMİT EMRİ" verirsen fiyatı sen '
+                  'belirlersin: kayma yemezsin ama fiyat sana gelmezse '
+                  'emir hiç dolmaz.',
+                  style: TextStyle(
+                      color: OyunRenk.metinSolgun, height: 1.55)),
+            ),
+          )
+        else
+          ...oyun.emirler.map((e) => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 9),
+                child: _EmirKarti(e),
+              )),
+      ],
+    );
+  }
+}
+
+class _EmirKarti extends StatelessWidget {
+  final OyunEmir e;
+  const _EmirKarti(this.e);
+
+  @override
+  Widget build(BuildContext c) {
+    final sem = Sem(c);
+    final simdi = oyun.fiyat(e.sembol);
+    final uzaklik =
+        simdi != null && simdi > 0 ? (simdi - e.fiyat) / simdi * 100 : null;
+    final kalan = e.kalanGun(oyun.gun);
+
+    return Kutu(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Rozet('LİMİT AL', renk: OyunRenk.aksan),
+            const SizedBox(width: 9),
+            Text(e.sembol, style: Theme.of(c).textTheme.titleMedium),
+            const Spacer(),
+            Text('$kalan gün geçerli',
+                style: TextStyle(
+                    color: kalan <= 1 ? sem.uyari : OyunRenk.metinSonuk,
+                    fontSize: 11)),
+          ]),
+          const SizedBox(height: 9),
+          Satir('Emir fiyatın', '${tl(e.fiyat)} ₺'),
+          Satir('Şu anki fiyat', '${tl(simdi)} ₺'),
+          if (uzaklik != null)
+            Satir('Dolması için',
+                '%${_ond(uzaklik.abs(), 1)} düşmeli',
+                renk: sem.uyari),
+          Satir('${e.adet} adet · bloke', '${tl(e.bloke)} ₺'),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            // 34 pikselde yazı dikey kırpılıyordu — goldene bakınca görüldü.
+            height: 42,
+            child: OutlinedButton(
+              onPressed: () => oyun.emirIptal(e),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: sem.eksi,
+                  side: BorderSide(color: sem.eksi.withValues(alpha: 0.6)),
+                  shape: const RoundedRectangleBorder(borderRadius: kose)),
+              child: const Text('EMRİ İPTAL ET',
+                  style: TextStyle(fontSize: 11)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════ OYUN SONU
+
+/// Oyun bitince açılan karne.
+///
+/// ASIL ÖĞRETİCİ SATIR ENDEKS KARŞILAŞTIRMASI: kazanmak yetmiyor,
+/// hiçbir şey yapmasan ne olurdu sorusunu geçmek gerekiyor. Endeksin
+/// altında kalan bir kâr, harcanmış emektir.
+Future<void> oyunSonuGoster(BuildContext c) async {
+  final k = oyun.karne();
+  await showModalBottomSheet<void>(
+    context: c,
+    isScrollControlled: true,
+    backgroundColor: OyunRenk.panel,
+    shape: const RoundedRectangleBorder(borderRadius: kose),
+    builder: (_) => _OyunSonu(k),
+  );
+}
+
+class _OyunSonu extends StatelessWidget {
+  final ({
+    double getiri, double endeksGetiri, int islem, int kazanan,
+    double enIyi, double enKotu, String enIyiKod, String enKotuKod,
+  }) k;
+  const _OyunSonu(this.k);
+
+  @override
+  Widget build(BuildContext c) {
+    final sem = Sem(c);
+    final fark = k.getiri - k.endeksGetiri;
+    final yorum = fark > 2
+        ? 'Endeksi geçtin. Yaptığın seçimler işe yaramış.'
+        : (fark > -2
+            ? 'Endeksle başabaşsın. Bu kadar uğraşmadan da aynı sonuç '
+                'alınabilirdi — asıl soru bu.'
+            : 'Endeksin altında kaldın. Hiçbir şey yapmasan daha iyiydi; '
+                'işlem sayısı ve zamanlama nerede kaybettirdi, '
+                'kapanan işlemlere bak.');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.emoji_events_sharp, size: 20,
+                color: k.getiri >= 0 ? OyunRenk.aksan : OyunRenk.metinSolgun),
+            const SizedBox(width: 9),
+            const Text('OYUN BİTTİ',
+                style: TextStyle(
+                    color: OyunRenk.aksan, fontSize: 12.5,
+                    letterSpacing: 2, fontWeight: FontWeight.w700)),
+          ]),
+          const SizedBox(height: 16),
+
+          Row(children: [
+            Expanded(child: _kutu(c, 'SENİN', yzd(k.getiri, basamak: 1),
+                sem.yon(k.getiri))),
+            const SizedBox(width: 10),
+            Expanded(child: _kutu(c, 'HİÇBİR ŞEY YAPMASAN',
+                yzd(k.endeksGetiri, basamak: 1),
+                sem.yon(k.endeksGetiri))),
+          ]),
+          const SizedBox(height: 12),
+          Text(yorum,
+              style: Theme.of(c).textTheme.bodyMedium?.copyWith(height: 1.55)),
+          const SizedBox(height: 18),
+
+          Satir('İşlem sayısı', '${k.islem}'),
+          Satir('Kazanan işlem',
+              k.islem > 0
+                  ? '${k.kazanan} / ${k.islem}  '
+                      '(%${(k.kazanan / k.islem * 100).toStringAsFixed(0)})'
+                  : '—'),
+          if (k.enIyiKod.isNotEmpty)
+            Satir('En iyi', '${k.enIyiKod}  ${yzd(k.enIyi, basamak: 1)}',
+                renk: sem.arti),
+          if (k.enKotuKod.isNotEmpty)
+            Satir('En kötü', '${k.enKotuKod}  ${yzd(k.enKotu, basamak: 1)}',
+                renk: sem.eksi),
+
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: FilledButton(
+              onPressed: () {
+                Navigator.pop(c);
+                oyun.birak();
+              },
+              style: FilledButton.styleFrom(
+                  backgroundColor: OyunRenk.aksan,
+                  foregroundColor: OyunRenk.zemin,
+                  shape: const RoundedRectangleBorder(borderRadius: kose)),
+              child: const Text('YENİ OYUN'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kutu(BuildContext c, String etiket, String deger, Color renk) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        decoration: BoxDecoration(
+          color: OyunRenk.panelUst,
+          border: Border.all(color: OyunRenk.cizgi),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(etiket,
+                style: const TextStyle(
+                    color: OyunRenk.metinSonuk, fontSize: 9.5,
+                    letterSpacing: 1.1)),
+            const SizedBox(height: 6),
+            Text(deger,
+                style: TextStyle(
+                    color: renk, fontSize: 20, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
+}
+
+/// Piyasa / limit emri seçici.
+///
+/// İkisinin farkı seçicinin ALTINDA tek cümleyle yazıyor: takası
+/// görmeden seçim yapmak, kuralı ezberlemek olur.
+class _EmirTuru extends StatelessWidget {
+  final bool limitMi;
+  final ValueChanged<bool> degisti;
+  const _EmirTuru({required this.limitMi, required this.degisti});
+
+  @override
+  Widget build(BuildContext c) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('EMİR TÜRÜ',
+              style: TextStyle(
+                  color: OyunRenk.aksan, fontSize: 10.5, letterSpacing: 1.3)),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: _sec(c, false, 'PİYASA')),
+            const SizedBox(width: 8),
+            Expanded(child: _sec(c, true, 'LİMİT')),
+          ]),
+          const SizedBox(height: 7),
+          Text(
+              limitMi
+                  ? 'Fiyatı sen belirlersin, kayma yemezsin — ama fiyat '
+                      'sana gelmezse emir hiç dolmaz.'
+                  : 'Hemen dolar ama fiyatı sen belirlemezsin; kayma '
+                      'aleyhine işler.',
+              style: const TextStyle(
+                  color: OyunRenk.metinSonuk, fontSize: 11.5, height: 1.45)),
+        ],
+      );
+
+  Widget _sec(BuildContext c, bool deger, String etiket) {
+    final secili = limitMi == deger;
+    return InkWell(
+      onTap: () => degisti(deger),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: secili ? OyunRenk.aksanKoyu : null,
+          border: Border.all(
+              color: secili ? OyunRenk.aksan : OyunRenk.cizgiParlak,
+              width: secili ? 1.5 : 1),
+        ),
+        child: Text(etiket,
+            style: TextStyle(
+                color: secili ? OyunRenk.aksan : OyunRenk.metinSolgun,
+                fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1)),
+      ),
+    );
+  }
+}
+
+/// Liste satırındaki minik trend çizgisi (sparkline).
+///
+/// GELECEĞİ ÇİZMİYOR: yalnızca bugüne kadarki barlar. Tüm seri telefonda
+/// duruyor ve ileriyi çizmek oyunu bitirirdi.
+class _Kivilcim extends StatelessWidget {
+  final String kod;
+  const _Kivilcim({required this.kod});
+
+  static const _gun = 30;
+
+  @override
+  Widget build(BuildContext c) {
+    final h = oyun.hisse(kod);
+    if (h == null) return const SizedBox(width: 54);
+    final son = oyun.barIndeks;
+    final bas = (son - _gun).clamp(0, son);
+    if (son - bas < 3) return const SizedBox(width: 54);
+    final d = [
+      for (var i = bas; i <= son && i < h.barlar.length; i++)
+        h.barlar[i].kapanis
+    ];
+    final yukseldi = d.last >= d.first;
+    return SizedBox(
+      width: 54,
+      height: 26,
+      child: CustomPaint(
+        painter: _KivilcimBoya(
+            d, yukseldi ? Renk.arti : Renk.eksi),
+      ),
+    );
+  }
+}
+
+class _KivilcimBoya extends CustomPainter {
+  final List<double> veri;
+  final Color renk;
+  const _KivilcimBoya(this.veri, this.renk);
+
+  @override
+  void paint(Canvas tuval, Size boyut) {
+    if (veri.length < 2) return;
+    final enAz = veri.reduce((a, b) => a < b ? a : b);
+    final enCok = veri.reduce((a, b) => a > b ? a : b);
+    final aralik = (enCok - enAz).abs() < 1e-9 ? 1.0 : enCok - enAz;
+
+    final yol = Path();
+    for (var i = 0; i < veri.length; i++) {
+      final x = i / (veri.length - 1) * boyut.width;
+      final y = boyut.height - ((veri[i] - enAz) / aralik) * boyut.height;
+      i == 0 ? yol.moveTo(x, y) : yol.lineTo(x, y);
+    }
+    tuval.drawPath(
+        yol,
+        Paint()
+          ..color = renk
+          ..strokeWidth = 1.3
+          ..style = PaintingStyle.stroke
+          ..strokeJoin = StrokeJoin.round);
+
+    // Son nokta vurgulu: gözün nerede bittiğini bulması gerekmesin.
+    final sonX = boyut.width;
+    final sonY = boyut.height - ((veri.last - enAz) / aralik) * boyut.height;
+    tuval.drawCircle(Offset(sonX, sonY), 1.9, Paint()..color = renk);
+  }
+
+  @override
+  bool shouldRepaint(_KivilcimBoya eski) =>
+      eski.veri != veri || eski.renk != renk;
 }

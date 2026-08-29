@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:midas_analist/servis/hesap.dart';
+import 'package:midas_analist/ekran/oyun_kabuk.dart';
 import 'package:midas_analist/servis/oyun.dart';
+import 'package:midas_analist/tema.dart';
 
 /// Sanal İşlem oyunu — telefonda çalışan mantık.
 ///
@@ -183,8 +186,8 @@ void main() {
         [100, 101, 80, 85],     // stop 90'a değdi
       ]);
       o.al('X', 10, 90, 130);
-      final kapanan = o.ilerlet();
-      expect(kapanan.single.sebep, 'stop');
+      final ozet = o.ilerlet();
+      expect(ozet.kapananlar.single.sebep, 'stop');
       expect(o.pozisyonlar, isEmpty);
       expect(o.nakit, closeTo(10000 - 1000 + 900, 0.001));
     });
@@ -195,9 +198,10 @@ void main() {
         [100, 135, 99, 132],
       ]);
       o.al('X', 10, 90, 130);
-      final k = o.ilerlet();
-      expect(k.single.sebep, 'hedef');
-      expect(k.single.kar, closeTo((130 - 100) * 10, 0.001));
+      final ozet = o.ilerlet();
+      expect(ozet.kapananlar.single.sebep, 'hedef');
+      expect(ozet.kapananlar.single.kar,
+          closeTo((130 - 100) * 10, 0.001));
     });
 
     test('her gün için özkaynak noktası eklenir', () {
@@ -276,5 +280,195 @@ void main() {
   test('bulut yedeği oyunu KAPSIYOR', () {
     // Tohum kaybolursa yarısına gelinen oyun bir daha açılmaz.
     expect(Hesap.yedeklenen, contains(Oyun.anahtar));
+  });
+
+  // ── limit emirleri ──────────────────────────────────────────────────────
+
+  group('limit emri', () {
+    test('nakit BLOKE ediliyor', () {
+      // Bloke etmeseydik oyuncu aynı parayla beş emir verip hepsinin
+      // dolmasını izlerdi.
+      final o = _oyunKur();
+      expect(o.emirVer('X', 10, 90, 80, 130), isNull);
+      expect(o.blokeNakit, 900);
+      expect(o.kullanilabilirNakit, 10000 - 900);
+      expect(o.nakit, 10000, reason: 'para henüz çıkmadı, yalnızca bloke');
+    });
+
+    test('bloke edilen parayla ikinci emir verilemez', () {
+      final o = _oyunKur(sermaye: 1000);
+      o.emirVer('X', 10, 90, 80, 130);          // 900 bloke
+      expect(o.emirVer('X', 5, 90, 80, 130), contains('Nakit yetmiyor'));
+      expect(o.al('X', 5, 80, 130), contains('Nakit yetmiyor'));
+    });
+
+    test('limit fiyatı bugünkü fiyatın ÜSTÜNDE olamaz', () {
+      // Üstündeyse zaten piyasa emriyle alınır; limit emri anlamsız.
+      final o = _oyunKur();
+      expect(o.emirVer('X', 1, 120, 80, 200), contains('altında olmalı'));
+    });
+
+    test('fiyat gelince DOLAR', () {
+      final o = _oyunKur(barlar: [
+        [100, 101, 99, 100],
+        [95, 96, 88, 92],        // düşük 88 → 90 limitine değdi
+      ]);
+      o.emirVer('X', 10, 90, 80, 130);
+      final ozet = o.ilerlet();
+      expect(ozet.dolanlar.single.sembol, 'X');
+      expect(o.emirler, isEmpty);
+      expect(o.pozisyonlar.single.adet, 10);
+      expect(o.pozisyonlar.single.giris, 90);
+      expect(o.nakit, 10000 - 900);
+    });
+
+    test('boşluklu açılışta DAHA İYİ fiyattan dolar', () {
+      // Emrin bekliyor, piyasa limitinin altında açtı — sen kazandın.
+      final o = _oyunKur(barlar: [
+        [100, 101, 99, 100],
+        [85, 90, 84, 88],        // açılış 85, limit 90
+      ]);
+      o.emirVer('X', 10, 90, 80, 130);
+      o.ilerlet();
+      expect(o.pozisyonlar.single.giris, 85);
+    });
+
+    test('limit emrinde KAYMA YOK', () {
+      // Limit emrinin bütün mesele bu.
+      final o = _oyunKur(kaymaBp: 100, barlar: [
+        [100, 101, 99, 100],
+        [95, 96, 88, 92],
+      ]);
+      o.emirVer('X', 1, 90, 80, 130);
+      o.ilerlet();
+      expect(o.pozisyonlar.single.giris, 90,
+          reason: 'kayma uygulanmamalı');
+    });
+
+    test('süresi dolunca İPTAL olur ve bloke çözülür', () {
+      final o = _oyunKur(barlar: List.generate(
+          10, (i) => [100.0, 101.0, 99.0, 100.0]));
+      o.emirVer('X', 10, 90, 80, 130, gecerlilik: 3);
+      final ozet = o.ilerlet(adim: 4);
+      expect(ozet.iptaller.single.sembol, 'X');
+      expect(o.emirler, isEmpty);
+      expect(o.blokeNakit, 0);
+      expect(o.pozisyonlar, isEmpty);
+    });
+
+    test('elle iptal blokeyi çözer', () {
+      final o = _oyunKur();
+      o.emirVer('X', 10, 90, 80, 130);
+      o.emirIptal(o.emirler.single);
+      expect(o.emirler, isEmpty);
+      expect(o.blokeNakit, 0);
+    });
+
+    test('emirler diske yazılır', () async {
+      final o = _oyunKur();
+      o.emirVer('X', 10, 90, 80, 130);
+      await Future.delayed(Duration.zero);
+      final taze = Oyun();
+      await taze.yukle();
+      expect(taze.emirler.single.fiyat, 90);
+    });
+  });
+
+  // ── gün özeti ───────────────────────────────────────────────────────────
+
+  group('gün özeti', () {
+    test('hiçbir şey olmadıysa SESSİZ', () {
+      // Boş bildirim gürültüdür.
+      final o = _oyunKur();
+      expect(o.ilerlet().sessiz, isTrue);
+    });
+
+    test('değer değişimini taşır', () {
+      final o = _oyunKur(barlar: [
+        [100, 101, 99, 100], [120, 121, 119, 120],
+      ]);
+      o.al('X', 10, 90, 500);
+      final ozet = o.ilerlet();
+      expect(ozet.fark, closeTo(200, 0.001));
+    });
+  });
+
+  // ── karne ───────────────────────────────────────────────────────────────
+
+  test('karne endeksle kıyaslar', () {
+    // Kazanmak yetmiyor; endeksi geçmek gerekiyor.
+    final o = _oyunKur(barlar: [
+      [100, 101, 99, 100], [110, 111, 109, 110],
+    ]);
+    o.endeks = [100.0, 105.0];
+    o.al('X', 50, 90, 500);
+    o.ilerlet();
+    final k = o.karne();
+    expect(k.endeksGetiri, closeTo(5.0, 0.01));
+    expect(k.getiri, greaterThan(0));
+  });
+
+  test('karne en iyi ve en kötü işlemi bulur', () {
+    final o = _oyunKur();
+    o.kapali = [
+      const OyunIslem(sembol: 'A', adet: 1, giris: 100, cikis: 130,
+          girisGunu: 0, cikisGunu: 3, sebep: 'hedef'),
+      const OyunIslem(sembol: 'B', adet: 1, giris: 100, cikis: 82,
+          girisGunu: 0, cikisGunu: 2, sebep: 'stop'),
+    ];
+    final k = o.karne();
+    expect(k.enIyiKod, 'A');
+    expect(k.enKotuKod, 'B');
+    expect(k.kazanan, 1);
+    expect(k.islem, 2);
+  });
+
+  // ── kabuk ───────────────────────────────────────────────────────────────
+
+  group('oyun kabuğu', () {
+    testWidgets('başlangıçta zorluk seçimi çıkar', (t) async {
+      SharedPreferences.setMockInitialValues({});
+      await oyun.yukle();
+      await t.pumpWidget(MaterialApp(
+          theme: temaOyun,
+          home: OyunKabuk(key: UniqueKey())));
+      await t.pumpAndSettle();
+      expect(find.text('ZORLUK SEÇ'), findsOneWidget);
+      expect(find.text('Kolay'), findsOneWidget);
+      expect(find.text('Zor'), findsOneWidget);
+    });
+
+    testWidgets('oyun sürerken BEŞ sekme ve gün şeridi var', (t) async {
+      SharedPreferences.setMockInitialValues({});
+      await oyun.yukle();
+      final o = _oyunKur();
+      oyun
+        ..tohum = o.tohum
+        ..zorluk = 'normal'
+        ..hisseler = o.hisseler
+        ..isinma = 0
+        ..gunSayisi = o.gunSayisi
+        ..gun = 0
+        ..nakit = 10000
+        ..baslangicSermaye = 10000
+        ..ozkaynak = [10000];
+
+      t.view.physicalSize = const Size(1100, 2600);
+      t.view.devicePixelRatio = 1.0;
+      addTearDown(t.view.reset);
+
+      await t.pumpWidget(MaterialApp(
+          theme: temaOyun, home: OyunKabuk(key: UniqueKey())));
+      await t.pumpAndSettle();
+
+      for (final ad in ['Portföy', 'Borsa', 'Emirler', 'Analist',
+                        'Haberler']) {
+        expect(find.text(ad), findsWidgets, reason: '$ad sekmesi yok');
+      }
+      expect(find.text('OYUN'), findsOneWidget,
+          reason: 'oyun rozeti kalıcı olmalı');
+      expect(find.text('+1 GÜN'), findsOneWidget);
+      expect(find.text('KAPANANA KADAR'), findsOneWidget);
+    });
   });
 }

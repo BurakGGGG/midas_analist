@@ -86,6 +86,68 @@ class OyunPozisyon {
       );
 }
 
+/// Bekleyen limit emri.
+///
+/// NEDEN VAR: piyasa emri "kaç liraya olursa olsun al" demek ve kayma
+/// yersin. Limit emri fiyatı sen belirlersin — ama gerçekleşmeyebilir.
+/// İkisi arasındaki bu takas, borsanın ilk öğrenilmesi gereken
+/// mekaniklerinden biri ve ancak yaşayarak öğreniliyor.
+///
+/// NAKİT BLOKE EDİLİYOR: bekleyen emir parayı bağlar. Gerçekte de öyle;
+/// bloke etmeseydik oyuncu aynı parayla beş emir verip hepsinin
+/// dolmasını izlerdi.
+class OyunEmir {
+  final String sembol;
+  final int adet, verilenGun, gecerlilik;
+  final double fiyat, stop, hedef;
+
+  const OyunEmir({
+    required this.sembol, required this.adet, required this.fiyat,
+    required this.stop, required this.hedef, required this.verilenGun,
+    this.gecerlilik = 5,
+  });
+
+  double get bloke => adet * fiyat;
+  int sonGun() => verilenGun + gecerlilik;
+  int kalanGun(int bugun) => sonGun() - bugun;
+
+  Map<String, dynamic> toJson() => {
+        'sembol': sembol, 'adet': adet, 'fiyat': fiyat, 'stop': stop,
+        'hedef': hedef, 'gun': verilenGun, 'gecerlilik': gecerlilik,
+      };
+
+  factory OyunEmir.fromJson(Map<String, dynamic> j) => OyunEmir(
+        sembol: '${j['sembol']}',
+        adet: ((j['adet'] ?? 0) as num).toInt(),
+        fiyat: ((j['fiyat'] ?? 0) as num).toDouble(),
+        stop: ((j['stop'] ?? 0) as num).toDouble(),
+        hedef: ((j['hedef'] ?? 0) as num).toDouble(),
+        verilenGun: ((j['gun'] ?? 0) as num).toInt(),
+        gecerlilik: ((j['gecerlilik'] ?? 5) as num).toInt(),
+      );
+}
+
+/// Bir günün sonunda ne olduğu — ilerletme sonrası gösterilen özet.
+class GunOzeti {
+  final int gun;
+  final List<OyunIslem> kapananlar;
+  final List<OyunEmir> dolanlar;
+  final List<OyunEmir> iptaller;
+  final double oncekiDeger, yeniDeger;
+
+  const GunOzeti({
+    required this.gun, required this.kapananlar, required this.dolanlar,
+    required this.iptaller, required this.oncekiDeger,
+    required this.yeniDeger,
+  });
+
+  double get fark => yeniDeger - oncekiDeger;
+  double get farkYuzde =>
+      oncekiDeger > 0 ? (yeniDeger / oncekiDeger - 1) * 100 : 0;
+  bool get sessiz =>
+      kapananlar.isEmpty && dolanlar.isEmpty && iptaller.isEmpty;
+}
+
 class OyunIslem {
   final String sembol, sebep;
   final int adet, girisGunu, cikisGunu;
@@ -148,6 +210,7 @@ class Oyun extends ChangeNotifier {
   double baslangicSermaye = 0;
   List<OyunPozisyon> pozisyonlar = [];
   List<OyunIslem> kapali = [];
+  List<OyunEmir> emirler = [];
   List<double> ozkaynak = [];
   int okunanHaber = 0;
 
@@ -192,6 +255,12 @@ class Oyun extends ChangeNotifier {
 
   double get pozisyonDegeri => pozisyonlar.fold(
       0.0, (a, p) => a + p.adet * (fiyat(p.sembol) ?? p.giris));
+
+  /// Bekleyen emirlerin bağladığı para.
+  double get blokeNakit => emirler.fold(0.0, (a, e) => a + e.bloke);
+
+  /// Yeni emir için gerçekten elde olan para.
+  double get kullanilabilirNakit => nakit - blokeNakit;
 
   double get toplamDeger => nakit + pozisyonDegeri;
 
@@ -291,6 +360,9 @@ class Oyun extends ChangeNotifier {
         kapali = ((j['kapali'] ?? []) as List)
             .map((e) => OyunIslem.fromJson(Map<String, dynamic>.from(e)))
             .toList();
+        emirler = ((j['emirler'] ?? []) as List)
+            .map((e) => OyunEmir.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
         ozkaynak = ((j['ozkaynak'] ?? []) as List)
             .map((e) => (e as num).toDouble())
             .toList();
@@ -309,6 +381,7 @@ class Oyun extends ChangeNotifier {
     baslangicSermaye = 0;
     pozisyonlar = [];
     kapali = [];
+    emirler = [];
     ozkaynak = [];
     okunanHaber = 0;
     hisseler = [];
@@ -330,6 +403,7 @@ class Oyun extends ChangeNotifier {
           'sermaye': baslangicSermaye, 'okunanHaber': okunanHaber,
           'pozisyonlar': pozisyonlar.map((x) => x.toJson()).toList(),
           'kapali': kapali.map((x) => x.toJson()).toList(),
+          'emirler': emirler.map((x) => x.toJson()).toList(),
           'ozkaynak': ozkaynak,
         }));
     notifyListeners();
@@ -417,9 +491,11 @@ class Oyun extends ChangeNotifier {
     if (adet < 1) return 'Adet en az 1 olmalı.';
     final f = _alisFiyati(k);
     final maliyet = adet * f;
-    if (maliyet > nakit + 1e-9) {
+    if (maliyet > kullanilabilirNakit + 1e-9) {
       return 'Nakit yetmiyor: ${maliyet.toStringAsFixed(2)} ₺ gerekiyor, '
-          '${nakit.toStringAsFixed(2)} ₺ var.';
+          '${kullanilabilirNakit.toStringAsFixed(2)} ₺ kullanılabilir'
+          '${blokeNakit > 0 ? ' (${blokeNakit.toStringAsFixed(2)} ₺ bekleyen '
+              'emirlerde bloke)' : ''}.';
     }
     if (stop <= 0 || stop >= f) return 'Stop giriş fiyatının altında olmalı.';
 
@@ -482,13 +558,61 @@ class Oyun extends ChangeNotifier {
     return null;
   }
 
+  /// Limit alış emri. Fiyat sana gelirse dolar, gelmezse dolmaz.
+  ///
+  /// Kayma YOK: limit emrinin bütün mesele bu. Piyasa emri kaymayı
+  /// yiyor ama kesin doluyor; limit emri kaymadan kaçıyor ama
+  /// dolmayabiliyor. Takas ancak yaşayarak öğreniliyor.
+  String? emirVer(String kod, int adet, double limitFiyat, double stop,
+      double hedef, {int gecerlilik = 5}) {
+    if (bitti) return 'Oyun bitti.';
+    if (adet < 1) return 'Adet en az 1 olmalı.';
+    if (limitFiyat <= 0) return 'Limit fiyatı gir.';
+    if (stop <= 0 || stop >= limitFiyat) {
+      return 'Stop limit fiyatının altında olmalı.';
+    }
+    final tutar = adet * limitFiyat;
+    if (tutar > kullanilabilirNakit + 1e-9) {
+      return 'Nakit yetmiyor: emir ${tutar.toStringAsFixed(2)} ₺ bloke '
+          'eder, ${kullanilabilirNakit.toStringAsFixed(2)} ₺ kullanılabilir.';
+    }
+    final simdi = fiyat(kod);
+    if (simdi != null && limitFiyat >= simdi) {
+      return 'Limit fiyatı bugünkü fiyatın (${simdi.toStringAsFixed(2)} ₺) '
+          'altında olmalı — üstündeyse doğrudan al.';
+    }
+    emirler = [
+      ...emirler,
+      OyunEmir(sembol: kod, adet: adet, fiyat: limitFiyat, stop: stop,
+          hedef: hedef, verilenGun: gun, gecerlilik: gecerlilik),
+    ];
+    _kaydet();
+    return null;
+  }
+
+  void emirIptal(OyunEmir e) {
+    emirler = emirler.where((x) => x != e).toList();
+    _kaydet();
+  }
+
   // ── zaman ───────────────────────────────────────────────────────────────
 
   /// `adim` gün ilerletir. `adim=0` → pozisyonlar kapanana kadar.
-  /// Döner: bu ilerlemede kapanan işlemler.
-  List<OyunIslem> ilerlet({int adim = 1}) {
-    if (bitti) return const [];
+  ///
+  /// Günün sırası GERÇEKÇİ: önce açık pozisyonların stop/hedefi kontrol
+  /// ediliyor, sonra bekleyen limit emirleri doluyor. Ters sırada olsa
+  /// aynı gün hem dolan hem stoplanan bir emir mümkün olurdu.
+  GunOzeti ilerlet({int adim = 1}) {
+    final baslangicDeger = toplamDeger;
     final kapananlar = <OyunIslem>[];
+    final dolanlar = <OyunEmir>[];
+    final iptaller = <OyunEmir>[];
+    if (bitti) {
+      return GunOzeti(gun: gun, kapananlar: kapananlar, dolanlar: dolanlar,
+          iptaller: iptaller, oncekiDeger: baslangicDeger,
+          yeniDeger: baslangicDeger);
+    }
+
     final kapanaKadar = adim <= 0;
     var kalan = kapanaKadar ? gunSayisi : adim;
 
@@ -496,6 +620,8 @@ class Oyun extends ChangeNotifier {
       gun += 1;
       kalan -= 1;
       final i = barIndeks;
+
+      // 1) açık pozisyonlar: stop / hedef
       final duran = <OyunPozisyon>[];
       for (final p in pozisyonlar) {
         final h = hisse(p.sembol);
@@ -517,11 +643,95 @@ class Oyun extends ChangeNotifier {
         kapali = [...kapali, islem];
       }
       pozisyonlar = duran;
+
+      // 2) bekleyen limit emirleri
+      final bekleyen = <OyunEmir>[];
+      for (final e in emirler) {
+        final h = hisse(e.sembol);
+        if (h == null || i >= h.barlar.length) {
+          bekleyen.add(e);
+          continue;
+        }
+        final b = h.barlar[i];
+        if (b.dusuk <= e.fiyat) {
+          // Açılış limitin ALTINDAYSA daha iyi fiyattan dolar — gerçekte
+          // de öyle: emrin bekliyor, piyasa boşluklu açtı, sen kazandın.
+          final dolus = b.acilis < e.fiyat ? b.acilis : e.fiyat;
+          nakit -= e.adet * dolus;
+          final mevcut =
+              pozisyonlar.where((p) => p.sembol == e.sembol).firstOrNull;
+          if (mevcut == null) {
+            pozisyonlar = [
+              ...pozisyonlar,
+              OyunPozisyon(sembol: e.sembol, adet: e.adet, giris: dolus,
+                  stop: e.stop, hedef: e.hedef, acilisGunu: gun),
+            ];
+          } else {
+            final n = mevcut.adet + e.adet;
+            final ort = (mevcut.giris * mevcut.adet + dolus * e.adet) / n;
+            pozisyonlar = pozisyonlar
+                .map((p) => p.sembol == e.sembol
+                    ? p.kopya(adet: n, giris: ort, stop: e.stop,
+                        hedef: e.hedef)
+                    : p)
+                .toList();
+          }
+          dolanlar.add(e);
+        } else if (gun >= e.sonGun()) {
+          iptaller.add(e);
+        } else {
+          bekleyen.add(e);
+        }
+      }
+      emirler = bekleyen;
+
       ozkaynak = [...ozkaynak, toplamDeger];
-      if (kapanaKadar && pozisyonlar.isEmpty) break;
+      if (kapanaKadar && pozisyonlar.isEmpty && emirler.isEmpty) break;
     }
     _kaydet();
-    return kapananlar;
+    return GunOzeti(gun: gun, kapananlar: kapananlar, dolanlar: dolanlar,
+        iptaller: iptaller, oncekiDeger: baslangicDeger,
+        yeniDeger: toplamDeger);
+  }
+
+  // ── oyun sonu karnesi ───────────────────────────────────────────────────
+
+  /// Oyun bitince: sen ne yaptın, hiçbir şey yapmasan ne olurdu.
+  ///
+  /// "HİÇBİR ŞEY YAPMASAN" kıyası asıl öğretici olan: kazanmak yetmiyor,
+  /// endeksi geçmek gerekiyor. Endeksin altında kalan bir kâr, aslında
+  /// harcanmış emek.
+  ({
+    double getiri, double endeksGetiri, int islem, int kazanan,
+    double enIyi, double enKotu, String enIyiKod, String enKotuKod,
+  }) karne() {
+    final ilkEndeks = endeks.isNotEmpty ? endeks[isinma] : 0.0;
+    final sonEndeks = (isinma + gun) < endeks.length
+        ? endeks[isinma + gun]
+        : (endeks.isNotEmpty ? endeks.last : 0.0);
+    final endeksGetiri =
+        ilkEndeks > 0 ? (sonEndeks / ilkEndeks - 1) * 100 : 0.0;
+
+    var enIyi = 0.0, enKotu = 0.0;
+    var enIyiKod = '', enKotuKod = '';
+    for (final i in kapali) {
+      if (i.karYuzde > enIyi) {
+        enIyi = i.karYuzde;
+        enIyiKod = i.sembol;
+      }
+      if (i.karYuzde < enKotu) {
+        enKotu = i.karYuzde;
+        enKotuKod = i.sembol;
+      }
+    }
+    return (
+      getiri: getiriYuzde,
+      endeksGetiri: endeksGetiri,
+      islem: kapali.length,
+      kazanan: kapali.where((i) => i.kar > 0).length,
+      enIyi: enIyi, enKotu: enKotu,
+      enIyiKod: enIyiKod, enKotuKod: enKotuKod,
+    );
   }
 
   Future<void> haberleriOkudum() async {
