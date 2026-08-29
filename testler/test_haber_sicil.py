@@ -182,3 +182,24 @@ def test_az_hisseli_gun_piyasa_serisine_girmez(tmp_path):
          "atr_yuzde": 2, "sma200_ustu": 1, "skor": 60}
         for k in ("A", "B", "C")], yol=yol)
     assert hs._piyasa_serisi(30, yol=yol) == []
+
+
+def test_kapsam_notu_neden_az_olculdugunu_soyler(tmp_path):
+    """Sunucuda 229 haber varken 23'ü ölçülebiliyordu ve sebebi
+    görünmüyordu: fiyat kaydı haberden kısa. Kullanıcı "neden bu kadar
+    az" diye sormamalı."""
+    yol = _kur(tmp_path, 1.0, 0.0)
+    # Fiyat geçmişinden ÇOK ESKİ bir haber ekle
+    ambar.haber_yaz(
+        [{"id": "eski", "tarih": "2020-01-02", "kaynak": "KAP",
+          "baslik": "AAA ihale", "ozet": "", "url": "ue",
+          "yayin": "2020-01-02"}],
+        [{"haber_id": "eski", "sembol": "AAA", "ifade": "AAA"}], yol=yol)
+    r = hs.olc(gun=5000, yol=yol)
+    assert r["kapsam_notu"], "kapsam farkı söylenmiyor"
+    assert "ölçülemiyor" in r["kapsam_notu"]
+
+
+def test_kapsam_tamsa_not_bos(tmp_path):
+    yol = _kur(tmp_path, 1.0, 0.0)
+    assert hs.olc(gun=90, yol=yol)["kapsam_notu"] == ""

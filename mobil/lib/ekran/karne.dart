@@ -380,6 +380,13 @@ class _HaberSiciliDurum extends State<_HaberSicili> {
             ikon: Icons.article_sharp, renk: sem.aksan,
           ),
         ),
+        // "Neden bu kadar az haber ölçülmüş" sorusu havada kalmamalı.
+        if ('${v['kapsam_notu'] ?? ''}'.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text('${v['kapsam_notu']}',
+                style: Theme.of(c).textTheme.bodySmall?.copyWith(height: 1.5)),
+          ),
         const SizedBox(height: 10),
         ...sirali.map((e) {
           final m = Map<String, dynamic>.from(e.value as Map);

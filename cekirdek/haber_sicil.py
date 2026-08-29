@@ -183,11 +183,26 @@ def olc(gun: int = 180, vadeler: tuple[int, ...] = (1, 5, 20),
                 sum(1 for x in degerler if x > 0) / len(degerler) * 100, 1),
         }
 
+    # NEDEN BU KADAR AZ ÖLÇÜLDÜ sorusu havada kalmamalı. Fiyat geçmişi
+    # haber geçmişinden kısaysa eski haberler ölçülemez: sunucuda 229
+    # haber varken 23'ü ölçülebiliyordu ve sebebi görünmüyordu.
+    fiyat_bas = piyasa[0]["tarih"] if piyasa else ""
+    haber_bas = satirlar[0]["tarih"] if satirlar else ""
+    kapsam_notu = ""
+    if fiyat_bas and haber_bas and fiyat_bas > haber_bas:
+        kapsam_notu = (
+            f"Fiyat kaydı {fiyat_bas} tarihinde başlıyor, haberler "
+            f"{haber_bas}'de. Daha eski haberler ölçülemiyor — ölçüm "
+            f"penceresi fiyat geçmişi büyüdükçe genişleyecek.")
+
     return {
         "yeterli_mi": bool(kategoriler),
         "haber": len(satirlar),
         "olculen": olculen,
         "gun": gun,
+        "fiyat_baslangic": fiyat_bas,
+        "haber_baslangic": haber_bas,
+        "kapsam_notu": kapsam_notu,
         "piyasadan_arindirildi": bool(piyasa),
         "kategoriler": kategoriler,
         "not": ("" if kategoriler else
