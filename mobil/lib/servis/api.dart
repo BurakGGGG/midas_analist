@@ -105,6 +105,21 @@ class Api {
     }
   }
 
+  Future<dynamic> _sil(String yol) async {
+    try {
+      final c = await http
+          .delete(_u(yol), headers: _basliklar)
+          .timeout(_kisa);
+      if (c.statusCode == 200) return jsonDecode(utf8.decode(c.bodyBytes));
+      throw ApiHata('Sunucu hatası (${c.statusCode})',
+          kod: c.statusCode, oneri: _detay(c.body));
+    } on ApiHata {
+      rethrow;
+    } catch (e) {
+      _cevir(e);
+    }
+  }
+
   String? _detay(String govde) {
     try {
       final j = jsonDecode(govde);
@@ -286,6 +301,23 @@ class Api {
   /// Aranabilir hisse listesi. Sözlük gibi bir kez inip saklanır.
   Future<Map<String, dynamic>> semboller() async =>
       Map<String, dynamic>.from(await _get('/semboller'));
+
+  // ── izleme listesi ───────────────────────────────────────────────────
+  // Sahip OLMADIĞIN, beklediğin hisseler. Sunucuda yaşıyor: alarm
+  // 5 dakikalık işte kontrol ediliyor ve telefon kapalıyken de
+  // çalışması gerekiyor.
+
+  Future<Map<String, dynamic>> izlemeListesi() async =>
+      Map<String, dynamic>.from(await _get('/izleme'));
+
+  Future<Map<String, dynamic>> izlemeEkle(String sembol,
+          {double alt = 0, double ust = 0, String not = ''}) async =>
+      Map<String, dynamic>.from(await _post('/izleme', {
+        'sembol': sembol, 'alt': alt, 'ust': ust, 'not': not,
+      }));
+
+  Future<void> izlemeSil(String sembol) async =>
+      _sil('/izleme/$sembol');
 
   // ── Sanal İşlem oyunu ────────────────────────────────────────────────
 

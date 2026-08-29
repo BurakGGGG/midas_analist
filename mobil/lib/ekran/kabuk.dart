@@ -7,6 +7,8 @@ import 'gun_ozeti.dart';
 import 'bugun.dart';
 import 'tarama.dart';
 import 'portfoy.dart';
+import 'hisse.dart';
+import 'izleme.dart';
 import 'tezler.dart';
 import 'oyun_kabuk.dart';
 import 'daha.dart';
@@ -41,7 +43,15 @@ void sekmeyeGit(BuildContext c, Sekme s) {
 /// TEK KAPI: push bildirimi `data.ekran` gönderiyor, widget ise
 /// `midas://<ekran>` URI'si. İkisi de aynı adlara çözülüyor; ayrı ayrı
 /// çözseydik biri eklenip diğeri unutulurdu.
-void _ekranaGit(BuildContext c, String ad) {
+void _ekranaGit(BuildContext c, String ad, {String sembol = ''}) {
+  // SEMBOL VARSA HİSSEYE GİT. Stop uyarısına dokunan kullanıcı "hangi
+  // hisse, şu an kaç, grafiği ne durumda" diye bakıyor; portföy
+  // listesine düşürmek onu bir dokunuş daha uzağa atıyordu.
+  if (sembol.isNotEmpty && (ad == 'portfoy' || ad == 'izleme' ||
+      ad == 'hisse' || ad == 'tarama')) {
+    Navigator.push(c, MaterialPageRoute(builder: (_) => HisseEkran(sembol)));
+    return;
+  }
   switch (ad) {
     case 'tarama':
       sekmeyeGit(c, Sekme.tarama);
@@ -52,6 +62,8 @@ void _ekranaGit(BuildContext c, String ad) {
       Navigator.push(c, MaterialPageRoute(builder: (_) => const TezlerEkran()));
     case 'sanal':
       sekmeyeGit(c, Sekme.sanal);
+    case 'izleme':
+      Navigator.push(c, MaterialPageRoute(builder: (_) => const IzlemeEkran()));
     case 'makro':
       Navigator.push(c, MaterialPageRoute(builder: (_) => const MakroEkran()));
     case 'gun_ozeti':
@@ -86,7 +98,8 @@ class _KabukDurum extends State<Kabuk> {
     final v = push.acilacakEkran.value;
     if (v == null || !mounted) return;
     push.acilacakEkran.value = null;
-    _ekranaGit(context, '${v['ekran'] ?? ''}');
+    _ekranaGit(context, '${v['ekran'] ?? ''}',
+        sembol: '${v['sembol'] ?? ''}');
   }
 
   /// Ana ekran widget'ına dokunulduğunda. URI biçimi: `midas://<ekran>`

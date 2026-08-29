@@ -509,8 +509,13 @@ def main() -> int:
             # Stop/hedef gün içinde geçilir ve gerçek para burada
             # kaybedilir; her açık kanala birden gitmeli.
             _bas, _gov = bildirim.stop_push(poz, fiyat, tur)
+            # Bildirime dokununca HİSSENİN kendisi açılsın. İstemci
+            # sembol varsa hisse ekranına gidiyor; `ekran` yalnızca
+            # sembol bilinmezse kullanılan yedek.
+            _ekran = "izleme" if tur in ("alt_gecti", "ust_gecti") else "portfoy"
             haberci.yolla(bildirim.stop_uyarisi(poz, fiyat, tur), _bas, _gov,
-                          veri={"ekran": "portfoy", "sembol": poz.get("sembol", "")})
+                          veri={"ekran": _ekran,
+                                "sembol": poz.get("sembol", "")})
 
     return 0
 

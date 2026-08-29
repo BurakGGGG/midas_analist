@@ -10,6 +10,7 @@ import 'ayarlar.dart';
 import 'ilerleme.dart';
 import 'gun_ozeti.dart';
 import 'defter.dart';
+import 'izleme.dart';
 import 'tezler.dart';
 import 'karne.dart';
 import 'sermaye.dart';
@@ -30,6 +31,12 @@ class DahaEkran extends StatelessWidget {
       (Icons.event_note_sharp, 'Gün özeti',
           'Dün → bugün, hareket edenler, haberler · 18:10 otomatik',
           const GunOzetiEkran()),
+      // Portföyün hemen ARDINDA: biri sahip olduğun, öteki beklediğin
+      // hisseler. İkisi de aynı soruyu soruyor — "ne zaman hareket
+      // edeceğim" — ve yan yana durmaları gerekiyor.
+      (Icons.visibility_sharp, 'İzleme listesi',
+          'Beklediğin hisseler · fiyat gelince haber ver',
+          const IzlemeEkran()),
       (Icons.fact_check_sharp, 'Sistemin sicili',
           'Sinyaller gerçekte ne yaptı — backtest değil, canlı',
           const KarneEkran()),

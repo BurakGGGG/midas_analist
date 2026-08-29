@@ -1361,6 +1361,52 @@ def alistirma_sinyaller(tarih: str, sermaye: float = 10_000.0,
         raise HTTPException(503, f"sinyaller üretilemedi: {e}")
 
 
+# ── izleme listesi ─────────────────────────────────────────────────────────
+#
+# Sahip OLMADIĞIN, sadece beklediğin hisseler. Pozisyon izleme karar
+# defterinden kendiliğinden doluyor; bu liste kullanıcının kendi seçimi.
+#
+# NEDEN SUNUCUDA: alarm 5 dakikalık işte kontrol ediliyor ve telefon
+# kapalıyken de çalışması gerekiyor. Portföyün kaynağı hâlâ telefon;
+# burası yalnızca "şu seviyeleri gözet" listesi.
+
+
+class IzlemeIstek(BaseModel):
+    sembol: str
+    alt: float = 0.0
+    ust: float = 0.0
+    not_: str = Field(default="", alias="not")
+
+    model_config = {"populate_by_name": True}
+
+
+@app.get("/izleme")
+def izleme_listesi():
+    """İzlenen hisseler ve seviyeleri."""
+    from cekirdek import izleme
+    return {"izleme": izleme.liste("izleme"),
+            "pozisyon": izleme.liste("pozisyon")}
+
+
+@app.post("/izleme")
+def izleme_ekle(istek: IzlemeIstek):
+    """İzlemeye alır ya da seviyelerini günceller."""
+    from cekirdek import izleme
+    try:
+        return guvenli(izleme.izle(istek.sembol, istek.alt, istek.ust,
+                                   istek.not_))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/izleme/{sembol}")
+def izleme_cikar(sembol: str):
+    from cekirdek import izleme
+    if not izleme.izleme_sil(sembol):
+        raise HTTPException(404, f"{sembol.upper()} izlemede değil")
+    return {"silindi": sembol.upper()}
+
+
 class CihazIstek(BaseModel):
     jeton: str
     platform: str = ""

@@ -33,6 +33,9 @@ import 'package:midas_analist/ekran/sirket_oku.dart';
 import 'package:midas_analist/ekran/gun_ozeti.dart';
 import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
+import 'package:midas_analist/ekran/izleme.dart';
+import 'package:midas_analist/servis/semboller.dart'
+    show semboller, Sembol;
 import 'package:midas_analist/ekran/tezler.dart';
 import 'package:midas_analist/ekran/oyun_acilis.dart';
 import 'package:midas_analist/ekran/oyun_tanitim.dart';
@@ -208,6 +211,23 @@ class _SahteApi extends Api {
   @override
   Future<Map<String, dynamic>> risk({required double sermaye}) async =>
       _ikili('risk');
+
+  @override
+  Future<Map<String, dynamic>> izlemeListesi() async => {
+        'izleme': [
+          {'sembol': 'ASELS', 'tur': 'izleme', 'alt': 360.0, 'ust': 0.0,
+           'not': 'savunma bütçesi haberi sonrası tekrar bak',
+           'tarih': '2026-08-22'},
+          {'sembol': 'EREGL', 'tur': 'izleme', 'alt': 0.0, 'ust': 62.5,
+           'not': '', 'tarih': '2026-08-25'},
+          {'sembol': 'KCHOL', 'tur': 'izleme', 'alt': 148.0, 'ust': 190.0,
+           'not': 'bilanço 12 Eylül', 'tarih': '2026-08-27'},
+        ],
+        'pozisyon': [
+          {'sembol': 'GESAN', 'tur': 'pozisyon', 'stop': 82.95,
+           'hedef': 110.70, 'giris': 92.20, 'tarih': '2026-08-14'},
+        ],
+      };
 
   @override
   Future<Map<String, dynamic>> alistirmaGun(String sembol,
@@ -503,6 +523,42 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/portfoy.png'));
+  });
+
+  // ── izleme listesi ───────────────────────────────────────────────────────
+
+  testWidgets('izleme', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    // Şirket adları sembol listesinden geliyor; boş bırakılırsa golden
+    // gerçekte olmayan bir hâli gösterir.
+    semboller.hisseler = const [
+      Sembol(kod: 'ASELS', ad: 'Aselsan Elektronik', izleniyor: true,
+          terimler: ['ASELS']),
+      Sembol(kod: 'EREGL', ad: 'Ereğli Demir ve Çelik', izleniyor: true,
+          terimler: ['EREGL']),
+      Sembol(kod: 'KCHOL', ad: 'Koç Holding', izleniyor: true,
+          terimler: ['KCHOL']),
+    ];
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1200));
+    await t.pumpWidget(_sarmala(const IzlemeEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/izleme.png'));
+  });
+
+  testWidgets('izleme_ekle', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1150));
+    await t.pumpWidget(_sarmala(const IzlemeEkleEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/izleme_ekle.png'));
   });
 
   // ── Sanal İşlem oyunu ────────────────────────────────────────────────────

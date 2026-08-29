@@ -204,6 +204,16 @@ def stop_push(pozisyon: dict, fiyat: float, tur: str) -> tuple[str, str]:
     if tur == "stop_yakin":
         return (f"⚠️ {sem} stopa yaklaştı",
                 f"Şu an {fiyat:.2f} ₺ · stop {pozisyon.get('stop', 0):.2f} ₺")
+    # İZLEME kayıtları: sahip olmadığın hisse. Alta inmesi çoğu zaman
+    # İYİ haber — beklediğin fiyat gelmiş oluyor. Emoji ve dil bu yüzden
+    # stop uyarısından ayrı: ikisini aynı tonda vermek, fırsatı kayıp
+    # gibi okutuyordu.
+    if tur == "alt_gecti":
+        return (f"👀 {sem} beklediğin seviyede",
+                f"Şu an {fiyat:.2f} ₺ · izlediğin alt {pozisyon.get('alt', 0):.2f} ₺")
+    if tur == "ust_gecti":
+        return (f"👀 {sem} üst seviyeyi geçti",
+                f"Şu an {fiyat:.2f} ₺ · izlediğin üst {pozisyon.get('ust', 0):.2f} ₺")
     return "", ""
 
 
@@ -231,6 +241,21 @@ def stop_uyarisi(pozisyon: dict, fiyat: float, tur: str) -> str:
         return (f"⚠️ <b>{sem} stopa yaklaştı</b>\n"
                 f"Şu an {fiyat:.2f} ₺ · stop {pozisyon.get('stop', 0):.2f} ₺ "
                 f"({(fiyat / float(pozisyon['stop']) - 1) * 100:+.1f}%)")
+
+    # ── izleme listesi
+    not_ = kacis(str(pozisyon.get("not") or ""))
+    kuyruk = f"\n\n<i>{not_}</i>" if not_ else ""
+    if tur == "alt_gecti":
+        return (f"👀 <b>{sem} BEKLEDİĞİN SEVİYEDE</b>\n"
+                f"Şu an {fiyat:.2f} ₺ · izlediğin alt "
+                f"{float(pozisyon.get('alt', 0)):.2f} ₺\n\n"
+                f"<i>Bu bir sinyal DEĞİL — senin koyduğun seviye. "
+                f"Sistemin bu hisse için sinyali var mı, taramaya bak."
+                f"</i>{kuyruk}")
+    if tur == "ust_gecti":
+        return (f"👀 <b>{sem} üst seviyeyi geçti</b>\n"
+                f"Şu an {fiyat:.2f} ₺ · izlediğin üst "
+                f"{float(pozisyon.get('ust', 0)):.2f} ₺{kuyruk}")
     return ""
 
 
