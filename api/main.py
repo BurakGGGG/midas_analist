@@ -1361,6 +1361,29 @@ def alistirma_sinyaller(tarih: str, sermaye: float = 10_000.0,
         raise HTTPException(503, f"sinyaller üretilemedi: {e}")
 
 
+@app.get("/takvim")
+def takvim_ucu(semboller: str = "", gun: int = 120):
+    """Bilanço, temettü, genel kurul ve ekonomi takvimi.
+
+    İKİ TÜR KAYIT ayrı işaretli:
+      duyurulan — KAP bildiriminde tarih yazılı
+      beklenen  — mevzuattan hesaplanan son tarih ya da düzenli veri günü
+
+    Ayrımı gizlemek yanlış olurdu: birine göre gün planlanır, ötekine
+    göre yalnızca dikkatli olunur.
+
+    `semboller` boşsa yalnızca genel takvim (bilanço pencereleri +
+    ekonomi) döner; hisseye özel olaylar için liste gerekiyor.
+    """
+    from cekirdek import takvim as _t, ambar, izleme
+    ambar.kur()
+    liste = [x.strip().upper() for x in semboller.split(",") if x.strip()]
+    if not liste:
+        liste = [k["sembol"] for k in izleme.liste()]
+    return guvenli({"olaylar": _t.takvim(liste, ileri_gun=gun),
+                    "sembol_sayisi": len(set(liste))})
+
+
 @app.get("/sermaye-islemleri")
 def sermaye_islemleri(semboller: str = "", gun: int = 30):
     """Verilen hisselerde bedelsiz / sermaye artırımı bildirimleri.

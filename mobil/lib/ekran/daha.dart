@@ -11,6 +11,7 @@ import 'ilerleme.dart';
 import 'gun_ozeti.dart';
 import 'defter.dart';
 import 'izleme.dart';
+import 'takvim.dart';
 import 'tezler.dart';
 import 'karne.dart';
 import 'sermaye.dart';
@@ -34,6 +35,11 @@ class DahaEkran extends StatelessWidget {
       // Portföyün hemen ARDINDA: biri sahip olduğun, öteki beklediğin
       // hisseler. İkisi de aynı soruyu soruyor — "ne zaman hareket
       // edeceğim" — ve yan yana durmaları gerekiyor.
+      // Takvim izleme listesinin YANINDA: ikisi de "ne zaman hareket
+      // edeceğim" sorusunu soruyor. Biri fiyata, öteki tarihe bakıyor.
+      (Icons.event_sharp, 'Takvim',
+          'Bilanço, temettü, genel kurul · yaklaşan tarihler',
+          const TakvimEkran()),
       (Icons.visibility_sharp, 'İzleme listesi',
           'Beklediğin hisseler · fiyat gelince haber ver',
           const IzlemeEkran()),

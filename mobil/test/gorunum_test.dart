@@ -34,6 +34,7 @@ import 'package:midas_analist/ekran/gun_ozeti.dart';
 import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
 import 'package:midas_analist/ekran/izleme.dart';
+import 'package:midas_analist/ekran/takvim.dart';
 import 'package:midas_analist/servis/semboller.dart'
     show semboller, Sembol;
 import 'package:midas_analist/ekran/tezler.dart';
@@ -226,6 +227,32 @@ class _SahteApi extends Api {
                'hisse ucuzlamıyor, adedin artıyor. Toplam paran '
                'değişmiyor. Aracı kurum ekranında büyük bir düşüş '
                'göreceksin; bu bir kayıp değil.'},
+        ],
+        'sembol_sayisi': 2,
+      };
+
+  @override
+  Future<Map<String, dynamic>> takvim(
+          {List<String> semboller = const [], int gun = 120}) async =>
+      {
+        'olaylar': [
+          {'tarih': '2026-09-01', 'tur': 'temettü', 'kaynak': 'duyurulan',
+           'sembol': 'GESAN', 'baslik': 'GESAN · Temettü', 'kalan_gun': 3,
+           'aciklama': 'Kar Payı Dağıtım İşlemlerine İlişkin Bildirim'},
+          {'tarih': '2026-09-03', 'tur': 'ekonomi', 'kaynak': 'beklenen',
+           'sembol': '', 'baslik': 'TÜİK enflasyon verisi', 'kalan_gun': 5,
+           'aciklama': 'Enflasyon açıklama günü. BIST\'te oynaklık '
+               'genelde artar; o gün için koyduğun stop dar kalabilir.'},
+          {'tarih': '2026-09-18', 'tur': 'genel_kurul',
+           'kaynak': 'duyurulan', 'sembol': 'THYAO',
+           'baslik': 'THYAO · Genel kurul', 'kalan_gun': 20,
+           'aciklama': 'Olağan Genel Kurul Toplantısı'},
+          {'tarih': '2026-11-09', 'tur': 'bilanço', 'kaynak': 'beklenen',
+           'sembol': '', 'baslik': '2026 3. çeyrek bilanço son tarihi',
+           'kalan_gun': 72,
+           'aciklama': '30.09.2026 dönemi finansal raporları bu tarihe '
+               'kadar açıklanmalı. Şirketler genelde son günü '
+               'beklemiyor — kesin gün ayrıca duyurulur.'},
         ],
         'sembol_sayisi': 2,
       };
@@ -541,6 +568,20 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/portfoy.png'));
+  });
+
+  // ── takvim ───────────────────────────────────────────────────────────────
+
+  testWidgets('takvim', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    Depo.apiUretici = _SahteApi.new;
+    addTearDown(() => Depo.apiUretici = null);
+    await t.binding.setSurfaceSize(const Size(420, 1500));
+    await t.pumpWidget(_sarmala(const TakvimEkran()));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/takvim.png'));
   });
 
   // ── izleme listesi ───────────────────────────────────────────────────────

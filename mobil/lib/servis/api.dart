@@ -319,6 +319,14 @@ class Api {
   Future<void> izlemeSil(String sembol) async =>
       _sil('/izleme/$sembol');
 
+  /// Bilanço, temettü, genel kurul ve ekonomi takvimi.
+  Future<Map<String, dynamic>> takvim(
+          {List<String> semboller = const [], int gun = 120}) async =>
+      Map<String, dynamic>.from(await _get('/takvim', sorgu: {
+        if (semboller.isNotEmpty) 'semboller': semboller.join(','),
+        'gun': '$gun',
+      }));
+
   /// Bedelsiz / sermaye artırımı bildirimleri. `semboller` boşsa
   /// sunucunun izlediği hisseler kullanılır.
   Future<Map<String, dynamic>> sermayeIslemleri(
