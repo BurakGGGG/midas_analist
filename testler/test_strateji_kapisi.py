@@ -117,3 +117,58 @@ def test_gecmis_pozisyonun_kurallari_hala_okunabilir():
 def test_en_az_iki_aktif_strateji_var():
     """Tek stratejiye düşmek yoğunlaşma riski demek."""
     assert len(aktif_stratejiler()) >= 2
+
+
+# ── trend: sinyal çıkışı kaldırıldı ───────────────────────────────────────
+#
+# 1250 günlük ölçüm, beş ardışık dönemin dördünde:
+#     ortalama getiri  %28,0 -> %38,2
+#     ortalama PF       1,57 -> 1,96
+#     en kötü düşüş   -%18,7 -> -%16,3
+#
+# Sebebi teşhiste görüldü: sinyal çıkışlarının 50 tanesi ortalama
+# +%0,14 ile, yani BAŞABAŞA kapanıyordu. Süre dolduğu için kapananların
+# %84'ü kârdaydı — sinyal, gelişecek işlemi kesiyordu.
+
+def test_trend_SINYAL_CIKISI_yok():
+    """Çıkış stop, hedef ve süreye bırakıldı. Geri konursa test kırılır."""
+    g = _cerceve()
+    g["Close"] = g["EMA50"] * 0.5      # eski kural burada çıkardı
+    g["RSI14"] = 95.0                   # eski kural burada da çıkardı
+    assert not STRATEJILER["trend"].cikis(g).any(), (
+        "trend'in sinyal çıkışı geri gelmiş")
+
+
+def test_trend_riski_hala_STOPLA_kontrol_ediliyor():
+    """Sinyal çıkışı kaldırıldı ama koruma kalkmadı: riski kontrol eden
+    şey zaten stoptu. Ölçümde düşüş AZALDI."""
+    st = STRATEJILER["trend"]
+    assert st.atr_stop_kat > 0
+    assert st.azami_tutma > 0, "süre sınırı da kalkarsa pozisyon sonsuza kadar açık kalır"
+
+
+def test_trend_azami_tutma_makul():
+    """Tek zaman sınırı bu. 30'a çıkarmak ölçümde daha kötü çıktı."""
+    assert 15 <= STRATEJILER["trend"].azami_tutma <= 25
+
+
+# ── vade kovaları ─────────────────────────────────────────────────────────
+
+def test_vade_takvime_gore():
+    """Kullanıcı "iki hafta" derken 14 TAKVİM günü anlıyor.
+    5 iş günü = 1 hafta."""
+    from dataclasses import replace
+    t = STRATEJILER["trend"]
+    assert replace(t, tipik_tutma=4).vade == "yaklaşık 1 hafta"
+    assert replace(t, tipik_tutma=9).vade == "1-2 hafta"
+    assert replace(t, tipik_tutma=11).vade == "2-3 hafta"
+    assert replace(t, tipik_tutma=18).vade == "3-4 hafta"
+    assert replace(t, tipik_tutma=40).vade == "bir aydan uzun"
+    assert replace(t, tipik_tutma=0).vade == ""
+
+
+def test_tipik_tutma_azami_tutmayi_asmaz():
+    """Tipik süre tavanı aşarsa biri yanlış ölçülmüş demektir."""
+    for ad, st in STRATEJILER.items():
+        if st.tipik_tutma:
+            assert st.tipik_tutma <= st.azami_tutma, ad

@@ -70,8 +70,10 @@ class Strateji:
     # TAVAN, bu ise gerçekte ne kadar sürdüğü — ikisi çok farklı: kirilim
     # tavanı 25 gün ama tipik olarak 10 günde bitiyor.
     #
-    # "Bu hafta mı, bu ay mı" sorusunu bu sayı cevaplıyor. 28 Ağustos
-    # 2026'da 99 hisse x 800 gün üzerinde ölçüldü.
+    # "Bu hafta mı, bu ay mı" sorusunu bu sayı cevaplıyor. 29 Ağustos
+    # 2026'da 97 hisse x 1250 gün üzerinde, GÜNCEL kurallarla yeniden
+    # ölçüldü — kurallar değişince bu sayı da değişiyor, ikisi birlikte
+    # güncellenmeli.
     tipik_tutma: int = 0
 
     # YENİ SİNYAL ÜRETİR Mİ. Kapatılan strateji silinmiyor: kodu, testleri
@@ -81,16 +83,26 @@ class Strateji:
 
     @property
     def vade(self) -> str:
-        """Tutma süresinin insan diliyle karşılığı."""
+        """Tutma süresinin insan diliyle karşılığı.
+
+        Kovalar TAKVİME göre, iş gününe göre değil: kullanıcı "iki
+        hafta" derken 14 takvim günü anlıyor, 14 iş günü değil.
+        Dönüşüm 5 iş günü = 1 hafta.
+
+        11 iş günü ≈ 2,2 takvim haftası. Eski kovalarda bu "2-4 hafta"
+        oluyordu ve bir aya kadar sürecek izlenimi veriyordu.
+        """
         g = self.tipik_tutma
         if g <= 0:
             return ""
         if g <= 5:
-            return "birkaç gün"
+            return "yaklaşık 1 hafta"
         if g <= 10:
             return "1-2 hafta"
+        if g <= 15:
+            return "2-3 hafta"
         if g <= 20:
-            return "2-4 hafta"
+            return "3-4 hafta"
         return "bir aydan uzun"
 
 
@@ -104,7 +116,27 @@ def _trend_giris(g: pd.DataFrame) -> pd.Series:
 
 
 def _trend_cikis(g: pd.DataFrame) -> pd.Series:
-    return ((g["Close"] < g["EMA50"]) | (g["RSI14"] > 80)).fillna(False)
+    """Trendde SİNYAL ÇIKIŞI YOK — çıkış stop, hedef ve süreye bırakıldı.
+
+    Eskiden `Close < EMA50 | RSI14 > 80` ile çıkılıyordu. 1250 günlük
+    ölçümde bu çıkışların 50 tanesi ortalama +%0,14 ile, yani BAŞABAŞA
+    kapanıyordu: gelişecek işlemi 7 günde kesiyordu. Aynı ölçümde süre
+    dolduğu için kapanan işlemlerin %84'ü kârdaydı.
+
+    Kaldırınca beş ardışık dönemin dördünde ölçüldü:
+        ortalama getiri  %28,0 -> %38,2
+        ortalama PF       1,57 -> 1,96
+        en kötü düşüş   -%18,7 -> -%16,3
+        tüm dönem       %121  -> %187
+
+    DÜŞÜŞ DE AZALDI. Beklenmedik görünüyor ama sebebi açık: riski
+    kontrol eden şey stop, çıkış sinyali değildi. Sinyal yalnızca
+    kazanacak işlemleri erken kesiyordu.
+
+    Denenen ara seçenek — EMA50 altında İKİ GÜN teyit — ikisinden de
+    kötü çıktı (ortalama %21,9, PF 1,44).
+    """
+    return pd.Series(False, index=g.index)
 
 
 def _tepki_giris(g: pd.DataFrame) -> pd.Series:
@@ -183,7 +215,7 @@ STRATEJILER: dict[str, Strateji] = {
         ad="kirilim",
         aciklama="20 günlük zirvenin hacimli kırılması (breakout)",
         giris=_kirilim_giris, cikis=_kirilim_cikis,
-        azami_tutma=25, atr_stop_kat=2.5, atr_hedef_kat=5.0, tipik_tutma=10,
+        azami_tutma=25, atr_stop_kat=2.5, atr_hedef_kat=5.0, tipik_tutma=11,
     ),
 }
 
