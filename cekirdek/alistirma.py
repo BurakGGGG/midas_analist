@@ -250,6 +250,10 @@ KAYMA_BP = 15.0        # tek yön, baz puan (15bp = %0,15)
 # serisi bazı günlerde hisselerden ayrışıyor.
 TAKVIM_SEMBOLU = "THYAO"
 
+# Sinyal hesabında göstergelerin ısınması için kaç satır yeterli.
+# SMA200 en uzun pencere; 400 satır iki kat pay bırakıyor.
+ISINMA_SATIRI = 400
+
 # Süreç içi seri önbelleği. `/alistirma/adim` bir haftayı tek turda
 # ilerletirken aynı seriyi 5 kez okumamalı; disk okuması + ATR hesabı
 # sembol başına ~1,5 ms ve 100 sembolde bu 0,75 saniyeye çıkıyor.
@@ -509,3 +513,85 @@ def adim(pozisyonlar: list[dict], nakit: float, tarih: str,
             "pozisyonlar": poz, "nakit": round(nakit, 2),
             "ozkaynak_noktalari": noktalar, "fiyatlar": fiyatlar,
             "deger": son_deger, "bitti": False, "sebep": ""}
+
+
+# ── o gün sistem ne diyordu ────────────────────────────────────────────────
+
+def sinyaller(tarih: str, sermaye: float = 10_000.0,
+              evren_adi: str = "bist100", azami: int = 8) -> dict:
+    """Verilen GEÇMİŞ tarihte sistemin ürettiği sinyaller.
+
+    Simülatörün en değerli parçası: kullanıcı sisteme güvenip
+    güvenmeyeceğini gerçek parayla değil burada öğreniyor.
+
+    GELECEĞE BAKMAMA: seri T gününe kadar KESİLİYOR ve göstergeler o
+    dilimden hesaplanıyor (gunluk.geriye_doldur ile aynı kural). Aksi
+    halde sinyaller o gün bilinmesi imkânsız bilgiyle üretilir ve
+    kullanıcı gerçekte var olmayan bir fırsatı kaçırdığını sanır.
+    """
+    from . import evren as _evren, gostergeler
+    from .strateji import Filtreler, STRATEJILER, skorla
+    from .risk import RiskAyarlari, pozisyon_hesapla
+
+    try:
+        sinir = pd.Timestamp(tarih)
+    except Exception:
+        return {"tarih": tarih, "sinyaller": [], "hata": "tarih okunamadı"}
+
+    ra = RiskAyarlari(sermaye=sermaye)
+    filtre = Filtreler()
+    ek_ham = _onbellekli_seri(_evren.ENDEKS)
+    ek = ek_ham["Close"] if not ek_ham.empty else None
+
+    cikti = []
+    for sem in _evren.evren_getir(evren_adi):
+        ham = _onbellekli_seri(sem)
+        if ham.empty:
+            continue
+        # ÖNCE KES, SONRA HESAPLA. Göstergeleri 1300 satır için hesaplayıp
+        # sonra kesmek üç kat daha uzun sürüyordu. SMA200 kayan pencere
+        # olduğu için 400 satırlık dilimde son değerler BİREBİR AYNI
+        # çıkıyor (test_sinyal_dilimi_tam_seriyle_ayni bunu kilitliyor).
+        kesik = ham[ham.index <= sinir].tail(ISINMA_SATIRI)
+        # SMA200'ün ısınması için yeterli geçmiş yoksa o gün bu hisse
+        # hakkında hiçbir şey söylenemez — tahmin etmek yerine atla.
+        if len(kesik) < 220:
+            continue
+        try:
+            dilim = gostergeler.gosterge_seti(kesik, ek)
+        except Exception:
+            continue
+        try:
+            uygun, _ = filtre.gecer_mi(dilim)
+            r = skorla(dilim)
+        except Exception:
+            continue
+        if not uygun or not r["sinyaller"]:
+            continue
+        for st_ad in r["sinyaller"]:
+            st = STRATEJILER.get(st_ad)
+            poz = pozisyon_hesapla(
+                sem, r["fiyat"], r["atr"], ra,
+                stop_kat=st.atr_stop_kat if st else None,
+                hedef_kat=st.atr_hedef_kat if st else None)
+            cikti.append({
+                "sembol": sem, "strateji": st_ad, "skor": r["skor"],
+                "fiyat": r["fiyat"], "stop": poz.stop, "hedef": poz.hedef,
+                "adet": poz.adet, "maliyet": poz.maliyet,
+                "risk_tl": poz.risk_tl,
+                "alinabilir": bool(poz.uygulanabilir),
+                "uyari": poz.uyari,
+                "vade": st.vade if st else "",
+                "rsi": r["rsi"], "adx": r["adx"],
+                "sma200_ustu": bool(r["sma200_ustu"]),
+            })
+
+    cikti.sort(key=lambda x: -x["skor"])
+    gercek_tarih = ""
+    d = _onbellekli_seri(TAKVIM_SEMBOLU)
+    if not d.empty:
+        onceki = d[d.index <= sinir]
+        if not onceki.empty:
+            gercek_tarih = onceki.index[-1].strftime("%Y-%m-%d")
+    return {"tarih": gercek_tarih or tarih, "istenen_tarih": tarih,
+            "sinyaller": cikti[:azami], "toplam": len(cikti)}

@@ -8,6 +8,7 @@ Bu yüzden testlerin çoğu "backtest ile aynı mı" sorusunu soruyor.
 
 Çalıştır:  .venv/bin/python -m pytest testler/ -q
 """
+import pandas as pd
 import pytest
 
 from cekirdek import alistirma as al
@@ -513,3 +514,79 @@ def test_aralik_son_gunu_disarida_birakir():
     assert a["en_erken"] < a["en_gec"] < "2030-01-01"
     t = al.takvim(a["en_gec"])
     assert len(t) >= 2, "en_gec'ten sonra ilerlenecek gün kalmalı"
+
+
+# ══════════════════════════════ geçmiş sinyaller ("o gün ne diyordu")
+
+def test_sinyal_dilimi_TAM_SERIYLE_ayni_sonuc_verir():
+    """Hız için göstergeler 400 satırlık dilimde hesaplanıyor.
+
+    Bu, sonucu değiştirmediği sürece geçerli bir iyileştirme. SMA200
+    kayan pencere olduğu için son değerler aynı çıkmalı — ama bunu
+    varsaymak yetmez, ölçmek gerekir. Tam seride 33 saniye süren hesap
+    dilimle 1 saniye; fark sonuca yansırsa kullanıcıya o gün var
+    olmayan bir sinyal gösterilirdi.
+    """
+    from cekirdek import gostergeler, evren, veri
+    from cekirdek.strateji import skorla, Filtreler
+
+    ek_ham = veri.fiyat_cek(evren.ENDEKS, gun=1300)
+    ek = ek_ham["Close"] if not ek_ham.empty else None
+    filtre = Filtreler()
+    karsilastirilan = 0
+
+    for sem in ["THYAO", "EREGL", "ASELS", "SISE", "KCHOL", "TUPRS"]:
+        ham = veri.fiyat_cek(sem, gun=1300)
+        if ham is None or len(ham) < 600:
+            continue
+        for tarih in ("2024-11-04", "2025-03-14", "2025-09-22", "2026-02-10"):
+            sinir = pd.Timestamp(tarih)
+            kesik = ham[ham.index <= sinir]
+            if len(kesik) < 260:
+                continue
+
+            tam = gostergeler.gosterge_seti(ham, ek)
+            tam = tam[tam.index <= sinir]
+            dilim = gostergeler.gosterge_seti(
+                kesik.tail(al.ISINMA_SATIRI), ek)
+
+            r_tam, r_dilim = skorla(tam), skorla(dilim)
+            assert r_tam["sinyaller"] == r_dilim["sinyaller"], (
+                f"{sem} {tarih}: sinyaller farklı — "
+                f"tam {r_tam['sinyaller']} · dilim {r_dilim['sinyaller']}")
+            assert r_tam["skor"] == pytest.approx(r_dilim["skor"], abs=0.5), (
+                f"{sem} {tarih}: skor farklı — "
+                f"{r_tam['skor']} vs {r_dilim['skor']}")
+            assert filtre.gecer_mi(tam)[0] == filtre.gecer_mi(dilim)[0], (
+                f"{sem} {tarih}: filtre kararı farklı")
+            karsilastirilan += 1
+
+    assert karsilastirilan >= 15, f"yalnızca {karsilastirilan} karşılaştırma"
+
+
+def test_sinyaller_gelecege_bakmaz():
+    """T günü sorulduğunda T+1'in verisi hesaba girmemeli."""
+    r = al.sinyaller("2024-11-04")
+    assert r["tarih"] <= "2024-11-04"
+    for s in r["sinyaller"]:
+        b = al.gun(s["sembol"], "2024-11-04")
+        assert b is not None
+        # Sinyal fiyatı O GÜNÜN kapanışı olmalı, ertesi günün değil
+        assert s["fiyat"] == pytest.approx(b.kapanis, rel=0.001), (
+            f"{s['sembol']}: sinyal fiyatı o günün kapanışı değil")
+
+
+def test_sinyaller_skora_gore_sirali():
+    r = al.sinyaller("2024-11-04")
+    skorlar = [s["skor"] for s in r["sinyaller"]]
+    assert skorlar == sorted(skorlar, reverse=True)
+
+
+def test_hafta_sonu_sorulursa_onceki_islem_gunu():
+    r = al.sinyaller("2024-11-09")      # cumartesi
+    assert r["tarih"] < "2024-11-09"
+
+
+def test_bozuk_tarih_cokmez():
+    r = al.sinyaller("bu bir tarih değil")
+    assert r["sinyaller"] == []

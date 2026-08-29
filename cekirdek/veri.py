@@ -42,12 +42,55 @@ def _onbellek_yolu(sembol: str, aralik: str) -> Path:
     return ONBELLEK / f"{sade_kod(sembol)}_{aralik}.pkl"
 
 
-def _taze_mi(yol: Path, azami_saat: float, gerekli_baslangic: datetime | None = None) -> bool:
+# Sembol başına EN DERİN istenen gün sayısı.
+#
+# Neden gerekli: bir hisse 2023'te halka arz olduysa geçmişi 700 gün.
+# 1300 gün istendiğinde `df.index[0]` hiçbir zaman istenen başlangıca
+# ulaşamaz, önbellek DAİMA bayat sayılır ve her çağrı yeniden indirir.
+# 100 hisselik bir tarama bu yüzden 164 saniye sürüyordu.
+#
+# Kayıt şunu söylüyor: "bu sembol için zaten şu derinlikte sorduk ve
+# gelen buydu — daha fazlası yok." Aynı ya da daha sığ bir istek
+# geldiğinde yeniden indirmeye gerek yok.
+DERINLIK_KAYDI = ONBELLEK / "derinlik.json"
+
+
+def _derinlikler() -> dict:
+    import json
+    try:
+        return json.loads(DERINLIK_KAYDI.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _derinlik_yaz(sembol: str, gun: int) -> None:
+    import json
+    try:
+        d = _derinlikler()
+        anahtar = sade_kod(sembol)
+        if int(d.get(anahtar, 0)) >= gun:
+            return
+        d[anahtar] = int(gun)
+        DERINLIK_KAYDI.parent.mkdir(parents=True, exist_ok=True)
+        DERINLIK_KAYDI.write_text(json.dumps(d, sort_keys=True),
+                                  encoding="utf-8")
+    except Exception:
+        pass    # kayıt tutulamazsa yalnızca performans kaybı olur
+
+
+def _taze_mi(yol: Path, azami_saat: float,
+             gerekli_baslangic: datetime | None = None,
+             sembol: str = "", gun: int = 0) -> bool:
     """Önbellek hem YETERİNCE YENİ hem de YETERİNCE GERİYE gidiyor olmalı.
 
     İkinci koşul şart: 400 günlük istekle doldurulmuş bir dosya, 1200 günlük
     istek için sessizce kullanılırsa backtest kısa geçmişle çalışır ve sonuç
     farkında olmadan yanlış çıkar.
+
+    ÜÇÜNCÜ DURUM: hissenin geçmişi istenenden kısa olabilir (yeni halka
+    arz). O zaman derinlik koşulu ASLA sağlanamaz. `DERINLIK_KAYDI` bunu
+    ayırıyor: daha önce bu derinlikte sorulduysa gelen veri hissenin
+    tamamıdır, yeniden indirmek boşuna.
     """
     if not yol.exists():
         return False
@@ -62,7 +105,11 @@ def _taze_mi(yol: Path, azami_saat: float, gerekli_baslangic: datetime | None = 
     if df is None or df.empty:
         return False
     # 10 günlük tolerans: hisse o tarihte henüz işlem görmüyor olabilir
-    return df.index[0] <= pd.Timestamp(gerekli_baslangic) + pd.Timedelta(days=10)
+    if df.index[0] <= pd.Timestamp(gerekli_baslangic) + pd.Timedelta(days=10):
+        return True
+    if sembol and gun:
+        return int(_derinlikler().get(sade_kod(sembol), 0)) >= gun
+    return False
 
 
 def veri_zamani(sembol: str) -> str | None:
@@ -125,7 +172,8 @@ def fiyat_cek(
     yol = _onbellek_yolu(sembol, aralik)
     baslangic = datetime.now() - timedelta(days=gun)
 
-    if not zorla and _taze_mi(yol, onbellek_saat, baslangic):
+    if not zorla and _taze_mi(yol, onbellek_saat, baslangic,
+                              sembol=sembol, gun=gun):
         try:
             return pd.read_pickle(yol)
         except Exception:
@@ -184,6 +232,9 @@ def fiyat_cek(
 
     try:
         df.to_pickle(yol)
+        # "Bu sembol için bu derinlikte sorduk, gelen buydu." Hissenin
+        # geçmişi istenenden kısaysa bir dahakine boşuna indirilmesin.
+        _derinlik_yaz(sembol, gun)
     except Exception:
         pass
     return df
@@ -204,7 +255,8 @@ def toplu_cek(
 
     for s in semboller:
         yol = _onbellek_yolu(s, aralik)
-        if not zorla and _taze_mi(yol, onbellek_saat, baslangic):
+        if not zorla and _taze_mi(yol, onbellek_saat, baslangic,
+                                  sembol=s, gun=gun):
             try:
                 sonuc[sade_kod(s)] = pd.read_pickle(yol)
                 continue
@@ -251,6 +303,7 @@ def toplu_cek(
                             df.index = df.index.tz_localize(None)
                         df.index.name = "Tarih"
                         df.to_pickle(_onbellek_yolu(s, aralik))
+                        _derinlik_yaz(s, gun)
                 except Exception:
                     df = pd.DataFrame(columns=SUTUNLAR)
             if df.empty:   # toplu indirme tutmadıysa tek tek dene

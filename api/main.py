@@ -1239,6 +1239,137 @@ def alistirma_adet(bakiye: float, fiyat: float, stop: float,
                                        risk_yuzde, azami_pozisyon))
 
 
+# ── Sanal İşlem: simülatör uçları ──────────────────────────────────────────
+#
+# Hepsi DURUMSUZ: bakiye, pozisyonlar ve özkaynak geçmişi telefonda
+# yaşıyor, sunucuya her istekte gönderiliyor. Sunucu yalnızca fiyat
+# biliyor ve kuralları uyguluyor.
+
+
+class AdimIstek(BaseModel):
+    tarih: str
+    nakit: float
+    adim: int = 1                    # 0 = hepsi kapanana kadar
+    pozisyonlar: list[dict] = Field(default_factory=list)
+    izlenen: list[str] = Field(default_factory=list)
+
+
+class DegerIstek(BaseModel):
+    tarih: str
+    nakit: float
+    pozisyonlar: list[dict] = Field(default_factory=list)
+
+
+class SanalAlIstek(BaseModel):
+    sembol: str
+    tarih: str
+    adet: int
+    nakit: float
+
+
+class SanalSatIstek(BaseModel):
+    tarih: str
+    pozisyon: dict
+    adet: int = 0                    # 0 = tamamı
+
+
+@app.get("/alistirma/aralik")
+def alistirma_aralik():
+    """Takvimden seçilebilecek en erken ve en geç gün.
+
+    Sabit tarih yazmak yanlış olurdu: aralık önbellekteki veriye bağlı
+    ve kurulumdan kuruluma değişiyor.
+    """
+    from cekirdek import alistirma
+    return guvenli(alistirma.aralik())
+
+
+@app.post("/alistirma/adim")
+def alistirma_adim(istek: AdimIstek):
+    """N işlem günü ilerletir. `adim=0` → pozisyonlar kapanana kadar.
+
+    POZİSYON OLMADAN DA İLERLER. Eski `/alistirma/ilerlet` sembol listesi
+    boşsa 400 dönüyordu; kullanıcı tarih seçip "yarına bakayım" dediğinde
+    hata alıyordu.
+    """
+    from cekirdek import alistirma
+    try:
+        r = alistirma.adim(istek.pozisyonlar, istek.nakit, istek.tarih,
+                           adim_sayisi=istek.adim,
+                           izlenen=[x.upper() for x in istek.izlenen])
+    except Exception as e:
+        raise HTTPException(503, f"ilerletilemedi: {e}")
+    return guvenli(r)
+
+
+@app.post("/alistirma/deger")
+def alistirma_deger(istek: DegerIstek):
+    """Portföyün o günkü değeri ve satır satır kâr/zarar."""
+    from cekirdek import alistirma
+    return guvenli(alistirma.deger(istek.pozisyonlar, istek.nakit,
+                                   istek.tarih))
+
+
+@app.post("/alistirma/al")
+def alistirma_al(istek: SanalAlIstek):
+    """Alım gerçekleşir mi, hangi fiyattan.
+
+    Tavan kuralı BURADA uygulanıyor. Telefonun engellemesine güvenmek,
+    kuralın iki yerde kopyalanıp sapması demekti.
+    """
+    from cekirdek import alistirma
+    b = alistirma.gun(istek.sembol.upper().strip(), istek.tarih)
+    if b is None:
+        raise HTTPException(404,
+                            f"{istek.sembol} için {istek.tarih} verisi yok")
+    r = alistirma.al_kontrol(b, istek.adet, istek.nakit)
+    r["bar"] = b.sozluk()
+    return guvenli(r)
+
+
+@app.post("/alistirma/sat")
+def alistirma_sat(istek: SanalSatIstek):
+    """Elle satış. Kısmi satış destekli."""
+    from cekirdek import alistirma
+    sem = (istek.pozisyon.get("sembol") or "").upper().strip()
+    b = alistirma.gun(sem, istek.tarih)
+    if b is None:
+        raise HTTPException(404, f"{sem} için {istek.tarih} verisi yok")
+    return guvenli(alistirma.sat(istek.pozisyon, b, adet=istek.adet))
+
+
+@app.get("/alistirma/seri")
+def alistirma_seri(sembol: str, baslangic: str | None = None,
+                   bitis: str | None = None, azami: int = 120):
+    """Grafik için kapanış serisi — `bitis` gününe kadar.
+
+    Hisse ekranı bunu veremiyor: oradaki seri her zaman BUGÜNE kadar
+    (`api/main.py` /hisse) ve geçmiş kesiti üretemiyor.
+    """
+    from cekirdek import alistirma
+    d = alistirma.seri(sembol.upper().strip(), baslangic, bitis)
+    if d.empty:
+        raise HTTPException(404, f"{sembol} için veri yok")
+    return {"sembol": sembol.upper().strip(),
+            "kapanis": seri_noktalari(d["Close"], azami=azami)}
+
+
+@app.get("/alistirma/sinyaller")
+def alistirma_sinyaller(tarih: str, sermaye: float = 10_000.0,
+                        evren_adi: str = "bist100", azami: int = 8):
+    """O tarihte sistemin ürettiği sinyaller — "o gün ne diyordu".
+
+    GELECEĞE BAKMAZ: seri o güne kadar kesilip göstergeler o dilimden
+    hesaplanıyor.
+    """
+    from cekirdek import alistirma
+    try:
+        return guvenli(alistirma.sinyaller(tarih, sermaye=sermaye,
+                                           evren_adi=evren_adi, azami=azami))
+    except Exception as e:
+        raise HTTPException(503, f"sinyaller üretilemedi: {e}")
+
+
 class CihazIstek(BaseModel):
     jeton: str
     platform: str = ""
