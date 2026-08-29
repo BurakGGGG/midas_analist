@@ -5,7 +5,7 @@ import '../parca/kart.dart';
 import '../tema.dart';
 import 'ogret.dart';
 import 'mufredat.dart';
-import 'sanal.dart';
+import 'kabuk.dart' show sekmeyeGit, Sekme;
 
 class IlerlemeEkran extends StatefulWidget {
   const IlerlemeEkran({super.key});
@@ -296,11 +296,11 @@ class _IlerlemeDurum extends State<IlerlemeEkran> {
               // ikisi yan yana durmalı. Dersi okuyup hemen uygulayabilmek,
               // eğitimin ayrı bir iş gibi durmasını engelliyor.
               OutlinedButton.icon(
-                onPressed: () => Navigator.push(c,
-                        MaterialPageRoute(builder: (_) => const SanalEkran()))
-                    .then((_) => setState(() {})),
+                // Sanal İşlem artık kendi kabuğu olan bir sekme; sayfa
+                // olarak açmak alt çubuğu devralmasını engellerdi.
+                onPressed: () => sekmeyeGit(c, Sekme.sanal),
                 icon: const Icon(Icons.science_sharp, size: 18),
-                label: const Text('Sanal İşlem · sanal parayla dene'),
+                label: const Text('Sanal İşlem · üretilmiş piyasada dene'),
                 style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46)),
               ),

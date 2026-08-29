@@ -7,7 +7,7 @@ import 'servis/egitmen.dart';
 import 'servis/hesap.dart';
 import 'servis/kilit.dart';
 import 'servis/push.dart';
-import 'servis/sanal.dart';
+import 'servis/oyun.dart';
 import 'servis/semboller.dart';
 import 'parca/ipucu.dart';
 import 'servis/widget_veri.dart';
@@ -23,7 +23,7 @@ Future<void> main() async {
   await hesap.yukle();
   // Kurulu bir PIN varsa uygulama KİLİTLİ açılır.
   await kilit.yukle();
-  await sanal.yukle();
+  await oyun.yukle();
   await semboller.yukle();
   await ipucu.yukle();
   // Firebase yoksa sessizce kapalı kalır; uygulama push'suz çalışır.

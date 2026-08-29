@@ -1,0 +1,134 @@
+[
+ {
+  "ad": "gün içi stop",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 100,
+  "yuksek": 101,
+  "dusuk": 94,
+  "kapanis": 96,
+  "sebep": "stop",
+  "fiyat": 95.0
+ },
+ {
+  "ad": "gün içi hedef",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 100,
+  "yuksek": 112,
+  "dusuk": 99,
+  "kapanis": 111,
+  "sebep": "hedef",
+  "fiyat": 110.0
+ },
+ {
+  "ad": "boşluklu açılışta stop AÇILIŞTAN",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 88,
+  "yuksek": 92,
+  "dusuk": 86,
+  "kapanis": 90,
+  "sebep": "stop",
+  "fiyat": 88
+ },
+ {
+  "ad": "hedefin üstünde açış HEDEFTEN",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 115,
+  "yuksek": 118,
+  "dusuk": 114,
+  "kapanis": 117,
+  "sebep": "hedef",
+  "fiyat": 110.0
+ },
+ {
+  "ad": "aynı gün ikisi de → STOP",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 100,
+  "yuksek": 112,
+  "dusuk": 94,
+  "kapanis": 105,
+  "sebep": "stop",
+  "fiyat": 95.0
+ },
+ {
+  "ad": "çıkış yok",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 100,
+  "yuksek": 105,
+  "dusuk": 97,
+  "kapanis": 103,
+  "sebep": "",
+  "fiyat": 0.0
+ },
+ {
+  "ad": "stopsuz",
+  "stop": 0.0,
+  "hedef": 110.0,
+  "acilis": 50,
+  "yuksek": 60,
+  "dusuk": 40,
+  "kapanis": 55,
+  "sebep": "",
+  "fiyat": 0.0
+ },
+ {
+  "ad": "hedefsiz",
+  "stop": 95.0,
+  "hedef": 0.0,
+  "acilis": 200,
+  "yuksek": 210,
+  "dusuk": 199,
+  "kapanis": 205,
+  "sebep": "",
+  "fiyat": 0.0
+ },
+ {
+  "ad": "stopa tam değme",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 100,
+  "yuksek": 104,
+  "dusuk": 95,
+  "kapanis": 99,
+  "sebep": "stop",
+  "fiyat": 95.0
+ },
+ {
+  "ad": "hedefe tam değme",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 100,
+  "yuksek": 110,
+  "dusuk": 99,
+  "kapanis": 108,
+  "sebep": "hedef",
+  "fiyat": 110.0
+ },
+ {
+  "ad": "açılış tam stopta",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 95,
+  "yuksek": 99,
+  "dusuk": 93,
+  "kapanis": 97,
+  "sebep": "stop",
+  "fiyat": 95
+ },
+ {
+  "ad": "açılış tam hedefte",
+  "stop": 95.0,
+  "hedef": 110.0,
+  "acilis": 110,
+  "yuksek": 113,
+  "dusuk": 108,
+  "kapanis": 112,
+  "sebep": "hedef",
+  "fiyat": 110.0
+ }
+]

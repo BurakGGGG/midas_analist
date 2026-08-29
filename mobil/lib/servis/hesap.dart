@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'sanal.dart' show sanal;
+import 'oyun.dart' show oyun;
 import 'depo.dart';
 import 'egitmen.dart';
 import 'modeller.dart';
@@ -41,10 +41,10 @@ class Hesap extends ChangeNotifier {
     'para_hareketleri_v1',
     'egitmen_ilerleme_v1',
     'egitmen_ders_v1',
-    // Sanal İşlem: simülasyon tarihi, nakit, pozisyonlar, kapanan
-    // işlemler ve özkaynak geçmişi. Özkaynak eğrisi özellikle önemli —
-    // gün gün biriktiriliyor ve kaybolursa geriye ÜRETİLEMEZ.
-    'sanal_islem_v1',
+    // Sanal İşlem oyunu: tohum, zorluk, gün, nakit, pozisyonlar.
+    // Piyasanın kendisi yedeklenmiyor — tohum onu birebir yeniden
+    // üretiyor. Tohum kaybolursa yarısına gelinen oyun bir daha açılmaz.
+    'oyun_v1',
     // Okunmuş ipucu balonları. Kaybolursa hepsi yeniden çıkar.
     'ipucu_v1',
   ];
@@ -201,7 +201,7 @@ class Hesap extends ChangeNotifier {
     // Sanal hesap da tazelenmeli. Bu satır yokken buluttan geri yükleme
     // sonrası sanal portföy bellekte ESKİ hâlinde kalıyordu ve bir
     // sonraki yazma geri yüklenen veriyi eziyordu.
-    await sanal.yukle();
+    await oyun.yukle();
     notifyListeners();
     return {'geri_yuklendi': true, 'anahtar': yazilan, 'surum': surum};
   }

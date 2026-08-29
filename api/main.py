@@ -1191,6 +1191,38 @@ def semboller_listesi(evren_adi: str = "hepsi"):
     return {"surum": _s.SURUM, "hisseler": kayitlar}
 
 
+# ── Sanal İşlem oyunu ──────────────────────────────────────────────────────
+#
+# Piyasa BURADA ÜRETİLİYOR, gerçek veriden değil. Uç durumsuz: telefon
+# tohumu saklıyor, oyun gerektiğinde birebir yeniden üretiliyor.
+
+
+@app.get("/oyun/zorluklar")
+def oyun_zorluklar():
+    """Kolay / Normal / Zor ve her birinin ne değiştirdiği."""
+    from cekirdek import oyun
+    return {"zorluklar": [z.sozluk() | {"kod": k}
+                          for k, z in oyun.ZORLUKLAR.items()]}
+
+
+@app.get("/oyun/uret")
+def oyun_uret(tohum: int | None = None, zorluk: str = "normal"):
+    """Bir oyunun tamamı: hisseler, fiyatlar, haberler, analist sinyalleri.
+
+    Tek çağrıda iniyor; sonrası tamamen çevrimdışı. `tohum` verilmezse
+    yeni bir oyun üretilir — telefon onu saklayıp aynı oyunu bir daha
+    isteyebilir.
+    """
+    from cekirdek import oyun
+    t = int(tohum) if tohum else oyun.tohum_uret()
+    try:
+        return guvenli(oyun.uret(t, zorluk))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(503, f"oyun üretilemedi: {e}")
+
+
 # ── Sanal İşlem: simülatör uçları ──────────────────────────────────────────
 #
 # Hepsi DURUMSUZ: bakiye, pozisyonlar ve özkaynak geçmişi telefonda

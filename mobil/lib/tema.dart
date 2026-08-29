@@ -51,7 +51,13 @@ class Sem {
   Color get arti => Renk.arti;
   Color get eksi => Renk.eksi;
   Color get uyari => Renk.uyari;
-  Color get aksan => Renk.aksan;
+
+  /// TEMADAN okunuyor, sabit değil. Sanal İşlem kendi (kehribar)
+  /// temasıyla açılıyor ve aksan onunla birlikte değişmeli.
+  ///
+  /// `arti`/`eksi` değişmiyor: yükseliş yeşili ve düşüş kırmızısı
+  /// uygulamanın rengi değil, piyasanın dili.
+  Color get aksan => Theme.of(c).colorScheme.primary;
 
   /// Değişime göre renk: sıfır nötr kalır, yanlış sinyal vermesin.
   Color yon(num? v) {
@@ -388,6 +394,96 @@ ThemeData _tema() {
 }
 
 final temaKoyu = _tema();
+
+// ══════════════════════════════════════════════ Sanal İşlem: kehribar
+//
+// Oyun "başka bir uygulama" gibi hissettirmeli. Aynı piksel karakteri
+// (sıfır yuvarlaklık, monospace, gölgesiz) korunuyor ama palet tamamen
+// değişiyor: fosfor yeşili yerine eski borsa terminallerinin kehribarı,
+// zemin soğuk yeşilimsi siyah yerine sıcak kahverengimsi siyah.
+//
+// ARTI/EKSİ RENKLERİ DEĞİŞMİYOR. Yükseliş yeşili ve düşüş kırmızısı
+// uygulamanın rengi değil piyasanın dili; oyunda tersine çevirmek
+// kullanıcının gerçek ekranda yanlış okumasına yol açardı.
+
+class OyunRenk {
+  static const zemin = Color(0xFF0D0A06);
+  static const panel = Color(0xFF17120A);
+  static const panelUst = Color(0xFF221A0F);
+  static const cizgi = Color(0xFF3D2F14);
+  static const cizgiParlak = Color(0xFF5C4720);
+
+  static const metin = Color(0xFFEDE0C8);
+  static const metinSolgun = Color(0xFF9A8863);
+  static const metinSonuk = Color(0xFF6A5A3E);
+
+  static const aksan = Color(0xFFF5A623);
+  static const aksanKoyu = Color(0xFF4A3208);
+}
+
+ThemeData _oyunTema() {
+  final t = _tema();
+  return t.copyWith(
+    colorScheme: t.colorScheme.copyWith(
+      primary: OyunRenk.aksan,
+      onPrimary: OyunRenk.zemin,
+      primaryContainer: OyunRenk.aksanKoyu,
+      onPrimaryContainer: OyunRenk.aksan,
+      secondary: OyunRenk.aksan,
+      onSecondary: OyunRenk.zemin,
+      surface: OyunRenk.panel,
+      onSurface: OyunRenk.metin,
+      onSurfaceVariant: OyunRenk.metinSolgun,
+      surfaceContainerHighest: OyunRenk.panelUst,
+      outline: OyunRenk.cizgi,
+      outlineVariant: OyunRenk.cizgi,
+    ),
+    scaffoldBackgroundColor: OyunRenk.zemin,
+    canvasColor: OyunRenk.zemin,
+    highlightColor: OyunRenk.panelUst,
+    dividerColor: OyunRenk.cizgi,
+    appBarTheme: t.appBarTheme.copyWith(
+      backgroundColor: OyunRenk.zemin,
+      foregroundColor: OyunRenk.metin,
+    ),
+    cardTheme: t.cardTheme.copyWith(color: OyunRenk.panel),
+    textTheme: t.textTheme.apply(
+      bodyColor: OyunRenk.metin,
+      displayColor: OyunRenk.metin,
+    ),
+    inputDecorationTheme: t.inputDecorationTheme.copyWith(
+      enabledBorder: OutlineInputBorder(
+          borderRadius: kose,
+          borderSide: const BorderSide(color: OyunRenk.cizgi)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: kose,
+          borderSide: const BorderSide(color: OyunRenk.aksan, width: 1.5)),
+      labelStyle: const TextStyle(color: OyunRenk.metinSolgun),
+      hintStyle: const TextStyle(color: OyunRenk.metinSonuk),
+      helperStyle: const TextStyle(color: OyunRenk.metinSonuk),
+    ),
+    navigationBarTheme: t.navigationBarTheme.copyWith(
+      backgroundColor: OyunRenk.panel,
+      indicatorColor: OyunRenk.aksanKoyu,
+      surfaceTintColor: Colors.transparent,
+      iconTheme: WidgetStateProperty.resolveWith(
+          (d) => IconThemeData(
+              color: d.contains(WidgetState.selected)
+                  ? OyunRenk.aksan
+                  : OyunRenk.metinSonuk)),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+          (d) => TextStyle(
+              fontFamily: _yaziTipi,
+              fontSize: 10.5,
+              letterSpacing: 0.6,
+              color: d.contains(WidgetState.selected)
+                  ? OyunRenk.aksan
+                  : OyunRenk.metinSonuk)),
+    ),
+  );
+}
+
+final temaOyun = _oyunTema();
 
 const sistemUst = SystemUiOverlayStyle(
   statusBarColor: Colors.transparent,

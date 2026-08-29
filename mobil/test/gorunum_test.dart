@@ -34,9 +34,9 @@ import 'package:midas_analist/ekran/gun_ozeti.dart';
 import 'package:midas_analist/ekran/karne.dart';
 import 'package:midas_analist/ekran/risk_ekran.dart';
 import 'package:midas_analist/ekran/tezler.dart';
-import 'package:midas_analist/ekran/sanal.dart';
-import 'package:midas_analist/servis/sanal.dart' show sanal, SanalHesap;
-import 'package:midas_analist/servis/semboller.dart' show semboller, Sembol;
+import 'package:midas_analist/ekran/oyun_kabuk.dart';
+import 'package:midas_analist/ekran/oyun_ekranlar.dart';
+import 'package:midas_analist/servis/oyun.dart';
 import 'package:midas_analist/ekran/hesap.dart';
 import 'package:midas_analist/ekran/portfoy.dart';
 import 'package:midas_analist/ekran/tarama.dart';
@@ -52,9 +52,9 @@ import 'package:midas_analist/servis/modeller.dart';
 import 'package:midas_analist/tema.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Widget _sarmala(Widget govde) => MaterialApp(
+Widget _sarmala(Widget govde, {ThemeData? tema}) => MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: temaKoyu,
+      theme: tema ?? temaKoyu,
       home: govde,
     );
 
@@ -221,45 +221,6 @@ class _SahteApi extends Api {
       {
         'adet': 9, 'risk_butcesi': 150.0, 'hisse_basi_risk': 16.07,
         'maliyet': 2808.0, 'baglayici': 'risk bütçesi',
-      };
-
-  @override
-  Future<Map<String, dynamic>> sanalAralik() async =>
-      {'en_erken': '2023-02-06', 'en_gec': '2026-08-27', 'gun_sayisi': 890};
-
-  @override
-  Future<Map<String, dynamic>> sanalDeger(String tarih, double nakit,
-          List<Map<String, dynamic>> pozisyonlar) async =>
-      {
-        'tarih': tarih, 'nakit': nakit, 'piyasa': 8255.84,
-        'ozkaynak': nakit + 8255.84, 'maliyet': 8000.0,
-        'acik_kar': 255.84, 'acik_kar_yuzde': 3.2,
-        'satirlar': [
-          {'sembol': 'THYAO', 'adet': 4, 'giris': 312.47, 'fiyat': 328.50,
-           'kar': 64.12, 'kar_yuzde': 5.1, 'stop': 296.40, 'hedef': 351.00,
-           'stop_uzaklik': 9.8, 'hedef_uzaklik': 6.8, 'veri_var': true},
-          {'sembol': 'GESAN', 'adet': 20, 'giris': 92.34, 'fiyat': 90.60,
-           'kar': -34.80, 'kar_yuzde': -1.9, 'stop': 88.70, 'hedef': 105.20,
-           'stop_uzaklik': 1.8, 'hedef_uzaklik': 16.1, 'veri_var': true},
-        ],
-      };
-
-  @override
-  Future<Map<String, dynamic>> sanalSinyaller(String tarih,
-          {double sermaye = 10000, int azami = 8}) async =>
-      {
-        'tarih': tarih,
-        'sinyaller': [
-          {'sembol': 'TAVHL', 'strateji': 'trend', 'skor': 79,
-           'fiyat': 237.81, 'stop': 219.60, 'hedef': 268.40, 'adet': 8,
-           'maliyet': 1902.48, 'risk_tl': 145.68, 'alinabilir': true,
-           'uyari': '', 'vade': '1-2 hafta'},
-          {'sembol': 'HALKB', 'strateji': 'trend', 'skor': 77,
-           'fiyat': 18.36, 'stop': 16.75, 'hedef': 21.06, 'adet': 93,
-           'maliyet': 1707.48, 'risk_tl': 149.73, 'alinabilir': true,
-           'uyari': '', 'vade': '1-2 hafta'},
-        ],
-        'toplam': 2,
       };
 
   @override
@@ -540,78 +501,101 @@ void main() {
         matchesGoldenFile('gorunum/portfoy.png'));
   });
 
-  // ── Sanal İşlem ──────────────────────────────────────────────────────────
+  // ── Sanal İşlem oyunu ────────────────────────────────────────────────────
+  //
+  // Golden verisi ÜRETECİN KENDİ ÇIKTISI (gorunum/oyun_veri.json), elle
+  // yazılmış sahte veri değil: ekranın gerçekte göreceği şekiller,
+  // fiyat büyüklükleri ve sinyal yoğunluğu ancak böyle doğrulanıyor.
 
-  Future<void> sanalKur(Map<String, dynamic>? j) async {
-    SharedPreferences.setMockInitialValues(
-        j == null ? {} : {SanalHesap.anahtar: jsonEncode(j)});
+  Map<String, dynamic> oyunVerisi() => Map<String, dynamic>.from(
+      jsonDecode(File('test/gorunum/oyun_veri.json').readAsStringSync())
+          as Map);
+
+  Future<void> oyunKur({int gun = 0, bool pozisyonlu = false}) async {
+    SharedPreferences.setMockInitialValues({});
     await depo.yukle();
-    await sanal.yukle();
-    semboller.hisseler = const [
-      Sembol(kod: 'THYAO', ad: 'Türk Hava Yolları', izleniyor: true,
-          terimler: ['THYAO', 'TURK HAVA YOLLARI', 'THY']),
-      Sembol(kod: 'GESAN', ad: 'Girişim Elektrik', izleniyor: true,
-          terimler: ['GESAN', 'GIRISIM ELEKTRIK']),
+    await oyun.yukle();
+    final d = oyunVerisi();
+    oyun.tohum = (d['tohum'] as num).toInt();
+    oyun.zorluk = 'normal';
+    // ignore: invalid_use_of_visible_for_testing_member
+    oyun.piyasayiTestIcinAl(d);
+    oyun.gun = gun;
+    oyun.baslangicSermaye = 25000;
+    oyun.nakit = 25000;
+    // Düz merdiven gerçek bir portföyü temsil etmiyordu; grafiğin
+    // inişli çıkışlı hâlini görmeden "iyi duruyor" denemez.
+    var deger = 25000.0;
+    oyun.ozkaynak = [
+      for (var i = 0; i <= gun; i++)
+        deger += (i % 7 - 2.6) * 78 + (i % 3 - 1) * 140,
     ];
+    if (pozisyonlu) {
+      final ilk = oyun.hisseler.first;
+      final ikinci = oyun.hisseler[1];
+      final f1 = oyun.fiyat(ilk.kod)!;
+      final f2 = oyun.fiyat(ikinci.kod)!;
+      oyun.pozisyonlar = [
+        OyunPozisyon(sembol: ilk.kod, adet: 20, giris: f1 * 0.94,
+            stop: f1 * 0.88, hedef: f1 * 1.15, acilisGunu: 4),
+        OyunPozisyon(sembol: ikinci.kod, adet: 12, giris: f2 * 1.05,
+            stop: f2 * 0.985, hedef: f2 * 1.2, acilisGunu: 9),
+      ];
+      oyun.nakit = 25000 - oyun.pozisyonlar.fold(0.0, (a, p) => a + p.maliyet);
+      oyun.kapali = [
+        OyunIslem(sembol: oyun.hisseler[2].kod, adet: 15, giris: 40.0,
+            cikis: 46.2, girisGunu: 2, cikisGunu: 11, sebep: 'hedef'),
+        OyunIslem(sembol: oyun.hisseler[3].kod, adet: 30, giris: 18.5,
+            cikis: 17.1, girisGunu: 6, cikisGunu: 12, sebep: 'stop'),
+      ];
+    }
   }
 
-  testWidgets('sanal_kurulum', (t) async {
-    await sanalKur(null);
-    Depo.apiUretici = _SahteApi.new;
-    addTearDown(() => Depo.apiUretici = null);
-    await t.binding.setSurfaceSize(const Size(420, 1150));
-    await t.pumpWidget(_sarmala(const SanalEkran()));
+  testWidgets('oyun_baslangic', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await depo.yukle();
+    await oyun.yukle();
+    await t.binding.setSurfaceSize(const Size(420, 1000));
+    await t.pumpWidget(_sarmala(const OyunKabuk()));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('gorunum/sanal_kurulum.png'));
+        matchesGoldenFile('gorunum/oyun_baslangic.png'));
   });
 
-  testWidgets('sanal_ana', (t) async {
-    await sanalKur({
-      'tarih': '2024-06-28', 'baslangicTarih': '2024-06-12',
-      'nakit': 2156.20, 'baslangicSermaye': 10000.0,
-      'pozisyonlar': [
-        {'sembol': 'THYAO', 'adet': 4, 'giris': 312.47, 'stop': 296.40,
-         'hedef': 351.00, 'tarih': '2024-06-12'},
-        {'sembol': 'GESAN', 'adet': 20, 'giris': 92.34, 'stop': 88.70,
-         'hedef': 105.20, 'tarih': '2024-06-18'},
-      ],
-      'kapali': [
-        {'sembol': 'EREGL', 'adet': 20, 'giris': 23.40, 'cikis': 25.76,
-         'girisTarih': '2024-06-12', 'cikisTarih': '2024-06-20',
-         'sebep': 'hedef'},
-      ],
-      'ozkaynak': [
-        {'t': '2024-06-12', 'd': 10000.0}, {'t': '2024-06-14', 'd': 9880.0},
-        {'t': '2024-06-18', 'd': 10120.0}, {'t': '2024-06-20', 'd': 10310.0},
-        {'t': '2024-06-24', 'd': 10190.0}, {'t': '2024-06-28', 'd': 10412.04},
-      ],
-      'sonDeger': null,
-    });
-    Depo.apiUretici = _SahteApi.new;
-    addTearDown(() => Depo.apiUretici = null);
-    await t.binding.setSurfaceSize(const Size(420, 2400));
-    await t.pumpWidget(_sarmala(const SanalEkran()));
+  testWidgets('oyun_portfoy', (t) async {
+    await oyunKur(gun: 28, pozisyonlu: true);
+    await t.binding.setSurfaceSize(const Size(420, 1700));
+    await t.pumpWidget(_sarmala(const OyunKabuk()));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('gorunum/sanal_ana.png'));
+        matchesGoldenFile('gorunum/oyun_portfoy.png'));
   });
 
-  testWidgets('sanal_alim', (t) async {
-    await sanalKur({
-      'tarih': '2024-06-12', 'baslangicTarih': '2024-06-12',
-      'nakit': 10000.0, 'baslangicSermaye': 10000.0,
-      'pozisyonlar': [], 'kapali': [],
-      'ozkaynak': [{'t': '2024-06-12', 'd': 10000.0}],
-    });
-    Depo.apiUretici = _SahteApi.new;
-    addTearDown(() => Depo.apiUretici = null);
-    await t.binding.setSurfaceSize(const Size(420, 2100));
-    await t.pumpWidget(_sarmala(
-        const SanalAlimEkran(sembol: 'THYAO')));
+  testWidgets('oyun_borsa', (t) async {
+    await oyunKur(gun: 28, pozisyonlu: true);
+    await t.binding.setSurfaceSize(const Size(420, 1400));
+    await t.pumpWidget(_sarmala(Scaffold(body: const OyunBorsa()), tema: temaOyun));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('gorunum/sanal_alim.png'));
+        matchesGoldenFile('gorunum/oyun_borsa.png'));
+  });
+
+  testWidgets('oyun_analist', (t) async {
+    await oyunKur(gun: 28);
+    await t.binding.setSurfaceSize(const Size(420, 1500));
+    await t.pumpWidget(_sarmala(Scaffold(body: const OyunAnalist()), tema: temaOyun));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_analist.png'));
+  });
+
+  testWidgets('oyun_haberler', (t) async {
+    await oyunKur(gun: 28);
+    await t.binding.setSurfaceSize(const Size(420, 1300));
+    await t.pumpWidget(_sarmala(Scaffold(body: const OyunHaberler()), tema: temaOyun));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_haberler.png'));
   });
 
   // ── hiç bakılmamış ekranlar ──────────────────────────────────────────────

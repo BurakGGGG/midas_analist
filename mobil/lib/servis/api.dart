@@ -287,6 +287,19 @@ class Api {
   Future<Map<String, dynamic>> semboller() async =>
       Map<String, dynamic>.from(await _get('/semboller'));
 
+  // ── Sanal İşlem oyunu ────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> oyunZorluklar() async =>
+      Map<String, dynamic>.from(await _get('/oyun/zorluklar'));
+
+  /// Bir oyunun tamamı. `tohum` verilmezse yeni oyun üretilir.
+  Future<Map<String, dynamic>> oyunUret({int? tohum,
+          String zorluk = 'normal'}) async =>
+      Map<String, dynamic>.from(await _get('/oyun/uret', uzun: true, sorgu: {
+        if (tohum != null) 'tohum': '$tohum',
+        'zorluk': zorluk,
+      }));
+
   // ── Sanal İşlem ──────────────────────────────────────────────────────
   // Hepsi durumsuz: bakiye ve pozisyonlar gövdede gidiyor.
 

@@ -19,13 +19,14 @@ class Baslik extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(width: 8, height: 14, color: Renk.aksan),
+                Container(width: 8, height: 14,
+                    color: Theme.of(c).colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     metin.toUpperCase(),
                     style: Theme.of(c).textTheme.labelSmall?.copyWith(
-                          color: Renk.aksan,
+                          color: Theme.of(c).colorScheme.primary,
                           letterSpacing: 1.4,
                           fontSize: 11.5,
                         ),
@@ -115,7 +116,7 @@ class Rozet extends StatelessWidget {
 
   @override
   Widget build(BuildContext c) {
-    final r = renk ?? Renk.aksan;
+    final r = renk ?? Theme.of(c).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
@@ -128,7 +129,7 @@ class Rozet extends StatelessWidget {
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
-              color: dolu ? Renk.zemin : r)),
+              color: dolu ? Theme.of(c).scaffoldBackgroundColor : r)),
     );
   }
 }
@@ -167,7 +168,8 @@ class SkorHalka extends StatelessWidget {
               width: blokEn - 1.5,
               height: 7,
               margin: const EdgeInsets.only(right: 1.5),
-              color: i < dolu ? renk : Renk.panelUst,
+              color: i < dolu ? renk
+                            : Theme.of(c).colorScheme.surfaceContainerHighest,
             ),
           ),
         ),
@@ -248,7 +250,7 @@ class Bos extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Renk.cizgi),
+                  border: Border.all(color: Theme.of(c).colorScheme.outline),
                   borderRadius: kose,
                 ),
                 child: Icon(ikon, size: 26, color: Renk.metinSonuk),
@@ -315,7 +317,8 @@ class _YukleniyorDurum extends State<Yukleniyor>
                       width: 7,
                       height: 12,
                       margin: const EdgeInsets.only(right: 2),
-                      color: aktif ? Renk.aksan : Renk.panelUst,
+                      color: aktif ? Theme.of(c).colorScheme.primary
+                          : Theme.of(c).colorScheme.surfaceContainerHighest,
                     );
                   }),
                 );
@@ -351,13 +354,13 @@ class Not extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
       decoration: BoxDecoration(
-        color: Renk.panelUst,
+        color: Theme.of(c).colorScheme.surfaceContainerHighest,
         borderRadius: kose,
         border: Border(
           left: BorderSide(color: r, width: 4),
-          top: const BorderSide(color: Renk.cizgi),
-          right: const BorderSide(color: Renk.cizgi),
-          bottom: const BorderSide(color: Renk.cizgi),
+          top: BorderSide(color: Theme.of(c).colorScheme.outline),
+          right: BorderSide(color: Theme.of(c).colorScheme.outline),
+          bottom: BorderSide(color: Theme.of(c).colorScheme.outline),
         ),
       ),
       child: Row(

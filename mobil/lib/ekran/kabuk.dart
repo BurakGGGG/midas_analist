@@ -8,7 +8,7 @@ import 'bugun.dart';
 import 'tarama.dart';
 import 'portfoy.dart';
 import 'tezler.dart';
-import 'sanal.dart';
+import 'oyun_kabuk.dart';
 import 'daha.dart';
 
 /// Alt sekmeler. Sıra günlük akışı izler: bugün ne var → ara → neyim var
@@ -71,7 +71,7 @@ class Kabuk extends StatefulWidget {
 
 class _KabukDurum extends State<Kabuk> {
   static const _ekranlar = [BugunEkran(), TaramaEkran(), PortfoyEkran(),
-                            SanalEkran(), DahaEkran()];
+                            SizedBox.shrink(), DahaEkran()];
 
   @override
   void initState() {
@@ -112,7 +112,16 @@ class _KabukDurum extends State<Kabuk> {
   }
 
   @override
-  Widget build(BuildContext c) => Scaffold(
+  Widget build(BuildContext c) {
+    // SANAL İŞLEM KABUĞU TAMAMEN DEVRALIYOR: kendi alt çubuğu, kendi
+    // paleti, kendi üst şeridi var. Kullanıcı bu bölüme girdiğinde
+    // başka bir uygulamaya geçmiş gibi hissetmeli — Midas'ın çubuğunu
+    // altta bırakmak o hissi bozardı.
+    if (sekme.value == Sekme.sanal) return const OyunKabuk();
+    return _midas(c);
+  }
+
+  Widget _midas(BuildContext c) => Scaffold(
         body: IndexedStack(index: sekme.value.index, children: _ekranlar),
         bottomNavigationBar: NavigationBar(
           selectedIndex: sekme.value.index,
