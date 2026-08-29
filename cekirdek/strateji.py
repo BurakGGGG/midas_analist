@@ -194,15 +194,28 @@ STRATEJILER: dict[str, Strateji] = {
     #   geliştirme  PF 0,89 · getiri  -%8,3
     #   DOKUNULMAZ  PF 0,66 · getiri -%21,5
     #
-    # Denenen kurtarma girişimleri:
-    #   · göreceli güç kapısı (GG60>=10): -%21,5 -> -%8,5, hâlâ zararda
-    #   · hedef 2,5 -> 5,0 ATR: sonuç DEĞİŞMİYOR. Hedef hiç çalışmıyor;
-    #     çıkışlar RSI2>70 / Close>EMA10 sinyalinden geliyor, yani
-    #     `atr_hedef_kat` bu stratejide dekoratifti.
+    # ONARILABİLİYOR AMA YETMİYOR. Karne, tepki sinyallerinin 20 GÜNLÜK
+    # vadede +%0,76 ortalama verdiğini gösteriyordu; oysa strateji 6
+    # günde zorla çıkıyordu. trend'de işe yarayan ilaç burada da
+    # çalıştı — beş ardışık dönemde, dönem başına ortalama:
     #
-    # Daha çok kapı ekleyerek kurtarmak, aynı veriye daha çok düğme
-    # takmak olurdu. Kod ve testler duruyor: karar geri alınabilir ve
-    # "neden kapatıldı" sorusu cevaplanabilir.
+    #   bugünkü hali             -%6,8 · PF 0,84
+    #   sinyal çıkışı yok        -%5,3 · PF 0,86
+    #   tutma 6 -> 20            -%1,4 · PF 0,98
+    #   ikisi birden             +%3,6 · PF 1,14
+    #   ikisi + GG60>=10         +%6,4 · PF 1,33
+    #   ikisi + hedef 4 ATR      +%6,8 · PF 1,23
+    #
+    # Yani zarardan ÇIKARILABİLİYOR. Ama aynı dönemlerde mevduat %26,8,
+    # trend %38,2, kirilim %36,5 getiriyor. Onarılmış tepki sermayeyi
+    # hak etmiyor — portföye eklemek getiriyi seyreltirdi.
+    #
+    # Üstelik o +%6,8 rakamı altı adayın dört dönemin HEPSİNE bakılarak
+    # seçilmesinden geliyor; gerçekte daha düşük olması beklenir.
+    #
+    # Kod ve testler duruyor: karar geri alınabilir ve 'neden kapatıldı'
+    # cevaplanabilir. Yeniden açılacaksa onarım birlikte uygulanmalı:
+    # cikis=yok, azami_tutma=20, GG60 kapısı.
     "tepki": Strateji(
         ad="tepki",
         aciklama="Trend içi aşırı satım tepkisi (RSI2 mean-reversion) "

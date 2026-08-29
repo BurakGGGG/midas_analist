@@ -53,6 +53,8 @@ class _KarneDurum extends State<KarneEkran> {
     final uyarilar = (_v!['uyarilar'] as List?) ?? [];
     final filtre = (_v!['filtre'] ?? {}) as Map<String, dynamic>;
     final ay = ((kapsam['ay'] ?? 0) as num).toDouble();
+    final kapaliListe =
+        ((_v!['kapali_stratejiler'] as List?) ?? []).map((e) => '$e').toSet();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
@@ -141,14 +143,28 @@ class _KarneDurum extends State<KarneEkran> {
           ...stratejiler.entries.map((e) {
             final v = e.value as Map<String, dynamic>;
             final ort = (v['ortalama_getiri'] as num?)?.toDouble() ?? 0;
+            // KAPATILAN strateji burada işaretsiz kalırsa kullanıcı onu
+            // hâlâ çalışıyor sanıyor — ve karnede en iyi görünen
+            // strateji kapatılmış olabilir.
+            final kapali = kapaliListe.contains(e.key);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Kutu(
                 ic: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(children: [
                   Expanded(
-                    child: Text(e.key,
-                        style: Theme.of(c).textTheme.titleMedium?.copyWith(fontSize: 15)),
+                    child: Row(children: [
+                      Flexible(
+                        child: Text(e.key,
+                            style: Theme.of(c).textTheme.titleMedium?.copyWith(
+                                fontSize: 15,
+                                color: kapali ? Renk.metinSonuk : null)),
+                      ),
+                      if (kapali) ...[
+                        const SizedBox(width: 8),
+                        const Rozet('KAPALI', renk: Renk.metinSolgun),
+                      ],
+                    ]),
                   ),
                   Text('${v['sinyal']} sinyal · %${tl(v['kazanma_orani'] as num?, basamak: 1)}',
                       style: Theme.of(c).textTheme.bodySmall),
@@ -171,8 +187,15 @@ class _KarneDurum extends State<KarneEkran> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${m['strateji']}',
-                        style: Theme.of(c).textTheme.titleMedium?.copyWith(fontSize: 15)),
+                    Row(children: [
+                      Text('${m['strateji']}',
+                          style: Theme.of(c).textTheme.titleMedium
+                              ?.copyWith(fontSize: 15)),
+                      if (kapaliListe.contains('${m['strateji']}')) ...[
+                        const SizedBox(width: 8),
+                        const Rozet('KAPALI', renk: Renk.metinSolgun),
+                      ],
+                    ]),
                     const SizedBox(height: 4),
                     Text('${m['not']}',
                         style: Theme.of(c).textTheme.bodySmall?.copyWith(height: 1.4)),
@@ -198,7 +221,14 @@ class _KarneDurum extends State<KarneEkran> {
                 children: [
                   Row(children: [
                     Text('${m['strateji']}',
-                        style: Theme.of(c).textTheme.titleMedium?.copyWith(fontSize: 15)),
+                        style: Theme.of(c).textTheme.titleMedium?.copyWith(
+                            fontSize: 15,
+                            color: kapaliListe.contains('${m['strateji']}')
+                                ? Renk.metinSonuk : null)),
+                    if (kapaliListe.contains('${m['strateji']}')) ...[
+                      const SizedBox(width: 8),
+                      const Rozet('KAPALI', renk: Renk.metinSolgun),
+                    ],
                     const Spacer(),
                     Rozet(kisaDurum, renk: renk),
                   ]),

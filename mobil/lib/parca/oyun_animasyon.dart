@@ -165,13 +165,15 @@ Future<void> gunOzetiGoster(BuildContext c, GunOzeti o) async {
     context: c,
     backgroundColor: OyunRenk.panel,
     shape: const RoundedRectangleBorder(borderRadius: kose),
-    builder: (_) => _GunOzetiSayfa(o),
+    builder: (_) => GunOzetiSayfa(o),
   );
 }
 
-class _GunOzetiSayfa extends StatelessWidget {
+/// Gün sonu özetinin gövdesi. Ayrı sınıf: görsel testte tek başına
+/// çizilebilsin diye (alt sayfa olarak açılınca yakalanamıyor).
+class GunOzetiSayfa extends StatelessWidget {
   final GunOzeti o;
-  const _GunOzetiSayfa(this.o);
+  const GunOzetiSayfa(this.o, {super.key});
 
   @override
   Widget build(BuildContext c) {

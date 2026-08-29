@@ -143,23 +143,45 @@ class _TaramaDurum extends State<TaramaEkran> {
   /// Neden görünür: kullanıcı "önerilen 0" yazısını görüp sebebini
   /// bilmezse sisteme değil kendine güvenmeyi bırakır. Karantina bir
   /// yargıdır; yargının gerekçesi de gösterilmeli.
+  /// KARANTİNA ve KAPATMA ayrı şeyler; ikisi de `onerilir: false` ama
+  /// aynı cümleyle anlatmak iki yanlış birden söylüyordu.
+  ///
+  ///   karantina — geçici, veriye bağlı, sinyal ÜRETİLMEYE devam eder
+  ///   kapalı    — kalıcı karar, sinyal hiç üretilmez
   List<Widget> _karantinaNotu(BuildContext c, Sem sem) {
     final d = (_veri?['strateji_durumlari'] as Map?) ?? {};
-    final kapali = d.entries
-        .where((e) => (e.value as Map)['onerilir'] == false)
+    final karantina = d.entries
+        .where((e) => (e.value as Map)['onerilir'] == false &&
+            (e.value as Map)['sinif'] != 'kapalı')
         .toList();
-    if (kapali.isEmpty) return const [];
-    final adlar = kapali.map((e) => e.key).join(', ');
-    final gerekce = (kapali.first.value as Map)['gerekce'] ?? '';
+    final kapatilan = d.entries
+        .where((e) => (e.value as Map)['sinif'] == 'kapalı')
+        .toList();
+
     return [
-      Not(
-        'Karantinada: $adlar. Bu stratejilerin sinyalleri gösterilir ama '
-        'ÖNERİLMEZ — canlı sicilleri beklenen aralığın altında.\n\n$gerekce',
-        baslik: 'SİCİLİ ZAYIF STRATEJİLER',
-        ikon: Icons.gpp_maybe_outlined,
-        renk: sem.uyari,
-      ),
-      const SizedBox(height: 14),
+      if (karantina.isNotEmpty) ...[
+        Not(
+          'Karantinada: ${karantina.map((e) => e.key).join(', ')}. Bu '
+          'stratejilerin sinyalleri gösterilir ama ÖNERİLMEZ — canlı '
+          'sicilleri beklenen aralığın altında.'
+          '\n\n${(karantina.first.value as Map)['gerekce'] ?? ''}',
+          baslik: 'SİCİLİ ZAYIF STRATEJİLER',
+          ikon: Icons.gpp_maybe_outlined,
+          renk: sem.uyari,
+        ),
+        const SizedBox(height: 14),
+      ],
+      if (kapatilan.isNotEmpty) ...[
+        Not(
+          '${kapatilan.map((e) => e.key).join(', ')} artık sinyal '
+          'üretmiyor. Ölçümde para kaybettiği için kapatıldı; geçmiş '
+          'sicili kayıt olarak duruyor.',
+          baslik: 'KAPATILAN STRATEJİ',
+          ikon: Icons.do_not_disturb_on_outlined,
+          renk: Renk.metinSolgun,
+        ),
+        const SizedBox(height: 14),
+      ],
     ];
   }
 

@@ -848,6 +848,7 @@ def gunluk_haberler(tarih: str | None = None, azami: int = 40):
 def gunluk_karne():
     """Sistemin canlı sicili — backtest değil, gerçek sinyal sonuçları."""
     from cekirdek import ogrenme, ambar
+    from cekirdek.strateji import STRATEJILER
     ambar.kur()
     return guvenli({
         "karne": ogrenme.karne(),
@@ -855,6 +856,12 @@ def gunluk_karne():
         "filtre": ogrenme.filtre_etkisi(),
         "kapsam": ogrenme.olcum_kapsami(),
         "uyarilar": ogrenme.KIYAS_UYARILARI,
+        # Kapatılan stratejilerin GEÇMİŞ sicili karnede duruyor —
+        # durmalı da, ölçüm kaydı silinmez. Ama işaretsiz kalırsa
+        # kullanıcı hâlâ çalışan bir strateji sanıyor: karnede en iyi
+        # görünen strateji kapatılmış olabilir.
+        "kapali_stratejiler": [a for a, x in STRATEJILER.items()
+                               if not x.aktif],
     })
 
 
@@ -1470,5 +1477,8 @@ def stratejiler():
     return {"stratejiler": [{"ad": a, "aciklama": s.aciklama,
                              "azami_tutma": s.azami_tutma,
                              "atr_stop_kat": s.atr_stop_kat,
-                             "atr_hedef_kat": s.atr_hedef_kat}
+                             "atr_hedef_kat": s.atr_hedef_kat,
+                             "tipik_tutma": s.tipik_tutma,
+                             "vade": s.vade,
+                             "aktif": s.aktif}
                             for a, s in STRATEJILER.items()]}

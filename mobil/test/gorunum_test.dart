@@ -39,6 +39,7 @@ import 'package:midas_analist/ekran/oyun_tanitim.dart';
 import 'package:midas_analist/parca/ipucu.dart';
 import 'package:midas_analist/ekran/oyun_kabuk.dart';
 import 'package:midas_analist/ekran/oyun_ekranlar.dart';
+import 'package:midas_analist/parca/oyun_animasyon.dart';
 import 'package:midas_analist/servis/oyun.dart';
 import 'package:midas_analist/ekran/hesap.dart';
 import 'package:midas_analist/ekran/portfoy.dart';
@@ -666,6 +667,47 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/oyun_alim_limit.png'));
+  });
+
+  testWidgets('oyun_hisse', (t) async {
+    // Tek hisse ekranı hiç gözle görülmedi.
+    await oyunKur(gun: 28, pozisyonlu: true);
+    await t.binding.setSurfaceSize(const Size(420, 1600));
+    await t.pumpWidget(_sarmala(
+        OyunHisseEkran(kod: oyun.pozisyonlar.first.sembol), tema: temaOyun));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_hisse.png'));
+  });
+
+  testWidgets('oyun_gun_ozeti', (t) async {
+    // İlerletme sonrası açılan sayfa; hiç gözle görülmedi.
+    await oyunKur(gun: 28, pozisyonlu: true);
+    final ozet = GunOzeti(
+      gun: 30,
+      kapananlar: [
+        OyunIslem(sembol: oyun.hisseler[0].kod, adet: 20, giris: 161.97,
+            cikis: 198.16, girisGunu: 4, cikisGunu: 30, sebep: 'hedef'),
+        OyunIslem(sembol: oyun.hisseler[1].kod, adet: 12, giris: 8.21,
+            cikis: 7.70, girisGunu: 9, cikisGunu: 30, sebep: 'stop'),
+      ],
+      dolanlar: [
+        OyunEmir(sembol: oyun.hisseler[4].kod, adet: 30, fiyat: 101.68,
+            stop: 92.0, hedef: 120.0, verilenGun: 26),
+      ],
+      iptaller: [
+        OyunEmir(sembol: oyun.hisseler[5].kod, adet: 8, fiyat: 234.42,
+            stop: 210.0, hedef: 280.0, verilenGun: 24, gecerlilik: 3),
+      ],
+      oncekiDeger: 25202.08, yeniDeger: 25851.44,
+    );
+    await t.binding.setSurfaceSize(const Size(420, 700));
+    await t.pumpWidget(_sarmala(
+        Scaffold(body: GunOzetiSayfa(ozet)),
+        tema: temaOyun));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('gorunum/oyun_gun_ozeti.png'));
   });
 
   testWidgets('oyun_borsa', (t) async {

@@ -46,7 +46,14 @@ class FiyatGrafik extends StatelessWidget {
     final hepsi = [...k, ...e, ...s].map((p) => p.y);
     final enAz = hepsi.reduce((a, b) => a < b ? a : b);
     final enCok = hepsi.reduce((a, b) => a > b ? a : b);
-    final pay = (enCok - enAz) * 0.08;
+    // Hiç oynamayan seride enCok == enAz olur ve aralık sıfır çıkar;
+    // fl_chart sıfır aralıkta assert atıp bütün ekranı düşürüyor.
+    // Sanal İşlem'de ilk günün özkaynak eğrisi tam olarak böyle:
+    // tek nokta, hepsi aynı değer.
+    final acikli = (enCok - enAz).abs() < 1e-9
+        ? (enCok.abs() * 0.01).clamp(0.01, double.infinity)
+        : enCok - enAz;
+    final pay = acikli * 0.08;
     final artiyor = k.last.y >= k.first.y;
     final ana = artiyor ? sem.arti : sem.eksi;
     final tar = tarihler(kapanis);
@@ -58,7 +65,7 @@ class FiyatGrafik extends StatelessWidget {
           minY: enAz - pay,
           maxY: enCok + pay,
           gridData: FlGridData(
-            show: true, drawVerticalLine: false, horizontalInterval: (enCok - enAz) / 3,
+            show: true, drawVerticalLine: false, horizontalInterval: acikli / 3,
             getDrawingHorizontalLine: (_) => const FlLine(
                 color: Renk.cizgi, strokeWidth: 1, dashArray: [1, 3]),
           ),
@@ -67,7 +74,7 @@ class FiyatGrafik extends StatelessWidget {
             topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: AxisTitles(
               sideTitles: SideTitles(
-                showTitles: true, reservedSize: 46, interval: (enCok - enAz) / 3,
+                showTitles: true, reservedSize: 46, interval: acikli / 3,
                 getTitlesWidget: (v, _) => Padding(
                   padding: const EdgeInsets.only(left: 5),
                   child: Text(tl(v, basamak: v < 20 ? 1 : 0),
@@ -85,9 +92,18 @@ class FiyatGrafik extends StatelessWidget {
                 getTitlesWidget: (v, _) {
                   final i = v.toInt();
                   if (i < 0 || i >= tar.length) return const SizedBox();
+                  // ISO tarih ise gg.aa, değilse etiketin kendisi.
+                  //
+                  // Koruma eskiden `p.length < 2` diye bakıyor ama
+                  // `p[2]`ye erişiyordu: iki parçalı bir etiket
+                  // (Sanal İşlem'in "G-45" gün numaraları) korumadan
+                  // geçip RangeError ile ekranı çökertiyordu.
                   final p = tar[i].split('-');
-                  if (p.length < 2) return const SizedBox();
-                  return Text('${p[2].padLeft(2, '0')}.${p[1]}',
+                  final metin = p.length >= 3
+                      ? '${p[2].padLeft(2, '0')}.${p[1]}'
+                      : tar[i];
+                  if (metin.isEmpty) return const SizedBox();
+                  return Text(metin,
                       style: TextStyle(
                           fontSize: 10,
                           color: Theme.of(c).colorScheme.onSurfaceVariant));
