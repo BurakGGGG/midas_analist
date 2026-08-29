@@ -83,9 +83,47 @@ def test_duzelen_strateji_karantinadan_cikar(sinifla):
 
 
 def test_karantina_strateji_adina_bagli_degil(sinifla):
-    """Hiçbir strateji ismen yasaklı olmamalı."""
+    """Karantina kararı VERİYE bağlı; hiçbir AÇIK strateji ismen yasaklı
+    olmamalı.
+
+    Kapatılan stratejiler bunun dışında: kapatma karantina mekanizması
+    değil, ölçüme dayanan ayrı ve kalıcı bir karar (bkz.
+    test_strateji_kapisi.py). İkisini karıştırmamak önemli — karantina
+    kendiliğinden girilip çıkılan geçici bir hâl."""
+    from cekirdek.strateji import aktif_stratejiler
+    acik = set(aktif_stratejiler())
     for st in o.BACKTEST_AYLIK:
+        if st not in acik:
+            continue
         assert sinifla(kazanma=60.0, strateji=st)["sinif"] == "normal"
+
+
+def test_kapali_strateji_KAPALI_diye_isaretlenir(sinifla):
+    """Kapalı stratejiyi "karantina" diye göstermek yanıltıcı olurdu:
+    karantina geçici ve veriye bağlı, kapatma kalıcı bir karar."""
+    from cekirdek.strateji import STRATEJILER
+    kapali = [a for a, x in STRATEJILER.items() if not x.aktif]
+    if not kapali:
+        pytest.skip("kapalı strateji yok")
+    for st in kapali:
+        if st not in o.BACKTEST_AYLIK:
+            continue
+        r = sinifla(kazanma=90.0, strateji=st)
+        assert r["sinif"] == "kapalı"
+        assert r["onerilir"] is False
+        assert r["aktif"] is False
+        assert "KAPATILDI" in r["gerekce"]
+
+
+def test_kapatma_yuksek_canli_oranla_bile_degismez(sinifla):
+    """Kapatma kararı 1250 günlük ölçüme dayanıyor; birkaç iyi canlı
+    sinyal onu geri almamalı. Geri alma bilinçli bir karar olmalı."""
+    from cekirdek.strateji import STRATEJILER
+    kapali = [a for a, x in STRATEJILER.items()
+              if not x.aktif and a in o.BACKTEST_AYLIK]
+    if not kapali:
+        pytest.skip("kapalı strateji yok")
+    assert sinifla(kazanma=95.0, strateji=kapali[0])["sinif"] == "kapalı"
 
 
 def test_gerekce_sayilarla_aciklanir(sinifla):
@@ -100,5 +138,6 @@ def test_tum_stratejiler_siniflanir():
     s = o.strateji_siniflari()
     assert set(s) == set(o.BACKTEST_AYLIK)
     for d in s.values():
-        assert d["sinif"] in ("normal", "izlemede", "karantina", "hüküm_yok")
+        assert d["sinif"] in ("normal", "izlemede", "karantina",
+                              "hüküm_yok", "kapalı")
         assert isinstance(d["onerilir"], bool)

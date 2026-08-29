@@ -47,7 +47,8 @@ def test_kosullar_gercek_girisle_ayni(veriler):
             gercek = st.giris(g)
             for i in range(-60, 0):
                 try:
-                    y = yakinlik.olc(g, i).get(ad, {}).get("sinyal")
+                    y = yakinlik.olc(g, i, yalnizca_aktif=False) \
+                        .get(ad, {}).get("sinyal")
                     d = bool(gercek.iloc[i])
                 except Exception:
                     continue
@@ -60,9 +61,19 @@ def test_kosullar_gercek_girisle_ayni(veriler):
 
 def test_her_strateji_kapsandi(veriler):
     """Yeni strateji eklenip yakınlık tanımı unutulursa, o strateji için
-    hiç 'yaklaşıyor' bilgisi çıkmaz ve kimse fark etmez."""
+    hiç 'yaklaşıyor' bilgisi çıkmaz ve kimse fark etmez.
+
+    KAPALI stratejiler de kapsanmalı: tanım kaydığında haber vermeyen
+    bir aynalama, strateji yeniden açıldığında yanlış bilgi verir."""
     g = next(iter(veriler.values()))
-    assert set(yakinlik.olc(g)) == set(STRATEJILER)
+    assert set(yakinlik.olc(g, yalnizca_aktif=False)) == set(STRATEJILER)
+
+
+def test_kapali_strateji_kullaniciya_GOSTERILMEZ(veriler):
+    from cekirdek.strateji import aktif_stratejiler
+    g = next(iter(veriler.values()))
+    assert set(yakinlik.olc(g)) == set(aktif_stratejiler())
+    assert "tepki" not in yakinlik.olc(g), "kapalı strateji sızıyor"
 
 
 def test_ozet_en_ileri_stratejiyi_secer(veriler):

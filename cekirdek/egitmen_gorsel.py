@@ -208,7 +208,8 @@ def kayip_asimetrisi() -> dict:
 def korelasyon(gun: int = 120) -> dict:
     """Bugünün sinyalleri gerçekten farklı bahisler mi?"""
     from . import veri, evren, gostergeler, istatistik
-    from .strateji import Filtreler, STRATEJILER, filtre_maskesi
+    from .strateji import (Filtreler, aktif_stratejiler,
+                           filtre_maskesi)
     semboller = evren.evren_getir("bist100")
     ham = veri.toplu_cek(semboller, gun=260, onbellek_saat=12.0, sessiz=True)
     endeks = veri.fiyat_cek(evren.ENDEKS, gun=260, onbellek_saat=12.0)
@@ -221,7 +222,7 @@ def korelasyon(gun: int = 120) -> dict:
             g = gostergeler.gosterge_seti(df, ek)
             uygun = filtre_maskesi(g, Filtreler())
             if any(st.giris(g).fillna(False).iloc[-1] and bool(uygun.iloc[-1])
-                   for st in STRATEJILER.values()):
+                   for st in aktif_stratejiler().values()):
                 sinyalli.append(sem)
         except Exception:
             continue

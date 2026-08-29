@@ -74,6 +74,11 @@ class Strateji:
     # 2026'da 99 hisse x 800 gün üzerinde ölçüldü.
     tipik_tutma: int = 0
 
+    # YENİ SİNYAL ÜRETİR Mİ. Kapatılan strateji silinmiyor: kodu, testleri
+    # ve geçmiş sicili duruyor ki karar geri alınabilsin ve "neden
+    # kapatıldı" sorusu cevaplanabilsin. Yalnızca yeni sinyal üretmiyor.
+    aktif: bool = True
+
     @property
     def vade(self) -> str:
         """Tutma süresinin insan diliyle karşılığı."""
@@ -115,12 +120,28 @@ def _tepki_cikis(g: pd.DataFrame) -> pd.Series:
     return ((g["RSI2"] > 70) | (g["Close"] > g["EMA10"])).fillna(False)
 
 
+# Kırılımda aranan asgari göreceli güç: hisse son 60 günde endeksi
+# bu kadar puan geçmiş olmalı.
+#
+# NEDEN VAR: 1250 günlük ölçümde en büyük tek iyileştirme bu. Zirveyi
+# kıran ama endeksin gerisinde kalan hisse, kırılımını çoğunlukla geri
+# veriyor — "herkes yükselirken o da yükselmiş" oluyor.
+#
+#   geliştirme dönemi   PF 1,60 -> 2,43 · getiri %58 -> %112 · maxDD -%11 -> -%8
+#   DOKUNULMAZ dönem    PF 1,26 -> 1,90 · getiri %19 -> %57  · maxDD -%15 -> -%9
+#
+# İki dönemde de aynı yön ve benzer büyüklük; tek dönemde iyi görünen
+# bir eşik olsaydı reddedilirdi.
+KIRILIM_ASGARI_GG60 = 10.0
+
+
 def _kirilim_giris(g: pd.DataFrame) -> pd.Series:
-    """20 günlük zirvenin hacimle kırılması."""
+    """20 günlük zirvenin, endeksi geçen bir hissede hacimle kırılması."""
     kirilim = g["Close"] > g["DON_ust"]
     hacim = g["Hacim_orani"] > 1.4
     trend = (g["Close"] > g["SMA200"]) & (g["ADX14"] > 20)
-    return (kirilim & hacim & trend).fillna(False)
+    guc = g["GG60"] >= KIRILIM_ASGARI_GG60
+    return (kirilim & hacim & trend & guc).fillna(False)
 
 
 def _kirilim_cikis(g: pd.DataFrame) -> pd.Series:
@@ -135,11 +156,28 @@ STRATEJILER: dict[str, Strateji] = {
         giris=_trend_giris, cikis=_trend_cikis,
         azami_tutma=20, atr_stop_kat=2.0, atr_hedef_kat=4.0, tipik_tutma=9,
     ),
+    # KAPATILDI — 29 Ağustos 2026. Yeni sinyal üretmiyor.
+    #
+    # 1250 günlük ölçümde iki dönemde de para kaybetti:
+    #   geliştirme  PF 0,89 · getiri  -%8,3
+    #   DOKUNULMAZ  PF 0,66 · getiri -%21,5
+    #
+    # Denenen kurtarma girişimleri:
+    #   · göreceli güç kapısı (GG60>=10): -%21,5 -> -%8,5, hâlâ zararda
+    #   · hedef 2,5 -> 5,0 ATR: sonuç DEĞİŞMİYOR. Hedef hiç çalışmıyor;
+    #     çıkışlar RSI2>70 / Close>EMA10 sinyalinden geliyor, yani
+    #     `atr_hedef_kat` bu stratejide dekoratifti.
+    #
+    # Daha çok kapı ekleyerek kurtarmak, aynı veriye daha çok düğme
+    # takmak olurdu. Kod ve testler duruyor: karar geri alınabilir ve
+    # "neden kapatıldı" sorusu cevaplanabilir.
     "tepki": Strateji(
         ad="tepki",
-        aciklama="Trend içi aşırı satım tepkisi (RSI2 mean-reversion)",
+        aciklama="Trend içi aşırı satım tepkisi (RSI2 mean-reversion) "
+                 "— KAPALI, iki dönemde de zarar etti",
         giris=_tepki_giris, cikis=_tepki_cikis,
         azami_tutma=6, atr_stop_kat=2.5, atr_hedef_kat=2.5, tipik_tutma=4,
+        aktif=False,
     ),
     "kirilim": Strateji(
         ad="kirilim",
@@ -148,6 +186,16 @@ STRATEJILER: dict[str, Strateji] = {
         azami_tutma=25, atr_stop_kat=2.5, atr_hedef_kat=5.0, tipik_tutma=10,
     ),
 }
+
+
+def aktif_stratejiler() -> dict[str, Strateji]:
+    """Yeni sinyal üreten stratejiler.
+
+    `STRATEJILER` kapatılanları da içeriyor: geçmiş sinyallerin sicili,
+    portföydeki açık pozisyonun kuralları ve "neden kapatıldı" bilgisi
+    oradan okunuyor. Yeni sinyal üretirken bu süzgeç kullanılmalı.
+    """
+    return {a: s for a, s in STRATEJILER.items() if s.aktif}
 
 
 # ---------------------------------------------------------------- skorlama
@@ -206,7 +254,7 @@ def skorla(g: pd.DataFrame, i: int = -1) -> dict:
 
     # aktif strateji sinyalleri
     sinyaller = []
-    for ad, st in STRATEJILER.items():
+    for ad, st in aktif_stratejiler().items():
         try:
             if bool(st.giris(g).iloc[i]):
                 sinyaller.append(ad)

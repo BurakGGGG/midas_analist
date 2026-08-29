@@ -311,7 +311,8 @@ def _sinyaller(seriler: dict[str, pd.DataFrame], endeks: pd.Series,
     gün için yirmi saniyeye çıkıyordu.
     """
     from . import gostergeler
-    from .strateji import Filtreler, STRATEJILER, skorla
+    from .strateji import (Filtreler, STRATEJILER, aktif_stratejiler,
+                           skorla)
     from .risk import RiskAyarlari, pozisyon_hesapla
 
     ra = RiskAyarlari(sermaye=z.sermaye)
@@ -324,7 +325,7 @@ def _sinyaller(seriler: dict[str, pd.DataFrame], endeks: pd.Series,
         except Exception:
             continue
         girisler = {}
-        for ad, st in STRATEJILER.items():
+        for ad, st in aktif_stratejiler().items():
             try:
                 girisler[ad] = st.giris(g).to_numpy()
             except Exception:

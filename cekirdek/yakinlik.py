@@ -22,6 +22,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from . import strateji as _st
+
 # Sinyalin gerçekleşmesi için tek koşul kalmışsa ve uzaklık bu oranın
 # altındaysa "yakın" sayılır. %3: bir hisse tipik olarak birkaç günde
 # bu kadar yol alır — daha geniş bir eşik "yakın" kelimesini anlamsız
@@ -59,6 +61,7 @@ def _kosullar(s: pd.Series, onceki_kapanis: float) -> dict[str, list[dict]]:
     kapanis = g("Close")
     don_ust, hacim = g("DON_ust"), g("Hacim_orani")
     sma200, adx = g("SMA200"), g("ADX14")
+    gg60 = g("GG60")
     ema20, ema50 = g("EMA20"), g("EMA50")
     acilis, rsi2, bb = g("Open"), g("RSI2"), g("BB_konum")
     dusuk3 = g("_dusuk3", np.nan)
@@ -82,6 +85,15 @@ def _kosullar(s: pd.Series, onceki_kapanis: float) -> dict[str, list[dict]]:
              "yakin_mi": yakin_orani(kapanis, sma200),
              "uzaklik_yuzde": round(_oran_uzaklik(kapanis, sma200), 2)
                               if kapanis <= sma200 else 0.0},
+            {"ad": "endeksi geçme",
+             "saglandi": bool(gg60 >= _st.KIRILIM_ASGARI_GG60),
+             "aciklama": f"endeksin {gg60:+.0f} puan "
+                         f"{'önünde' if gg60 >= 0 else 'gerisinde'} "
+                         f"({_st.KIRILIM_ASGARI_GG60:.0f} gerekiyor)",
+             # 3 puanlık göreceli güç farkı bir haftada kapanabilir.
+             "yakin_mi": bool(np.isfinite(gg60)
+                              and gg60 >= _st.KIRILIM_ASGARI_GG60 - 3),
+             "uzaklik_yuzde": None},
             {"ad": "trend gücü",
              "saglandi": bool(adx > 20),
              "aciklama": f"ADX {adx:.1f} (20 gerekiyor)",
@@ -145,7 +157,8 @@ def _kosullar(s: pd.Series, onceki_kapanis: float) -> dict[str, list[dict]]:
     }
 
 
-def olc(g: pd.DataFrame, i: int = -1) -> dict:
+def olc(g: pd.DataFrame, i: int = -1,
+        yalnizca_aktif: bool = True) -> dict:
     """Bir hissenin her stratejiye yakınlığı.
 
     Döner: {strateji: {karsilanan, toplam, eksikler, sinyal, yakin,
@@ -175,7 +188,17 @@ def olc(g: pd.DataFrame, i: int = -1) -> dict:
         s["_dusuk3"] = np.nan
 
     cikti = {}
+    # Kapatılan strateji için "yaklaşıyor" demek yanıltıcı olurdu:
+    # sinyal verse bile kullanıcıya gösterilmeyecek.
+    #
+    # `yalnizca_aktif=False` yalnızca TESTLER için: koşul tanımlarının
+    # stratejinin giriş fonksiyonuyla aynı kaldığı, kapalı stratejilerde
+    # de sınanmalı. Aksi halde tanım sessizce kayar ve strateji yeniden
+    # açıldığında yanlış bilgi verir.
+    aktif = set(_st.aktif_stratejiler())
     for ad, kosullar in _kosullar(s, onceki).items():
+        if yalnizca_aktif and ad not in aktif:
+            continue
         eksik = [k for k in kosullar if not k["saglandi"]]
         sinyal = not eksik
         yakin = False

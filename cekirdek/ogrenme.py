@@ -284,13 +284,30 @@ def strateji_siniflari(gun: int = 20, yol=None) -> dict[str, dict]:
     Eşik veriye bağlı, sabit bir strateji adına bağlı DEĞİL: bozulan
     kendiliğinden karantinaya girer, düzelen kendiliğinden çıkar.
     """
+    from .strateji import STRATEJILER
+
     cikti: dict[str, dict] = {}
     for st in BACKTEST_AYLIK:
         canli = ambar.sinyal_karnesi(gun, strateji=st, yol=yol)
         n = canli.get("sinyal", 0)
         ay = _canli_ay_sayisi(st, gun=gun, yol=yol)
-        temel = {"strateji": st, "sinyal": n, "ay": ay,
+        tanim = STRATEJILER.get(st)
+        aktif = tanim.aktif if tanim else True
+        temel = {"strateji": st, "sinyal": n, "ay": ay, "aktif": aktif,
                  "kazanma_orani": canli.get("kazanma_orani")}
+
+        # KAPATILAN strateji karantinadan farklı: karantina veriye bakıp
+        # geçici olarak önermeyi durduruyor ve sinyal üretmeye devam
+        # ediyor. Kapatma kalıcı bir karar ve sinyal de üretilmiyor —
+        # ikisini aynı etiketle göstermek yanıltıcı olurdu.
+        if not aktif:
+            cikti[st] = {**temel, "sinif": "kapalı", "onerilir": False,
+                         "gerekce": (
+                             "Bu strateji KAPATILDI: 1250 günlük ölçümde "
+                             "hem geliştirme hem dokunulmaz dönemde para "
+                             "kaybetti. Yeni sinyal üretmiyor; geçmiş "
+                             "sicili kayıt olarak duruyor.")}
+            continue
 
         if ay < KARANTINA_ASGARI_AY or n < KARANTINA_ASGARI_SINYAL or \
                 "kazanma_orani" not in canli:
