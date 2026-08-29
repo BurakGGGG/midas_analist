@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'alistirma.dart' show kum;
+import 'sanal.dart' show sanal;
 import 'depo.dart';
 import 'egitmen.dart';
 import 'modeller.dart';
@@ -45,6 +46,12 @@ class Hesap extends ChangeNotifier {
     // ilerlemesi. Yeniden üretilemez — telefonu değiştirince görevleri
     // baştan yapmak istemezsin.
     'alistirma_v1',
+    // Sanal İşlem: simülasyon tarihi, nakit, pozisyonlar, kapanan
+    // işlemler ve özkaynak geçmişi. Özkaynak eğrisi özellikle önemli —
+    // gün gün biriktiriliyor ve kaybolursa geriye ÜRETİLEMEZ.
+    'sanal_islem_v1',
+    // Okunmuş ipucu balonları. Kaybolursa hepsi yeniden çıkar.
+    'ipucu_v1',
   ];
 
   String? jeton;
@@ -200,6 +207,7 @@ class Hesap extends ChangeNotifier {
     // sonrası sanal portföy bellekte ESKİ hâlinde kalıyordu ve bir
     // sonraki yazma geri yüklenen veriyi eziyordu.
     await kum.yukle();
+    await sanal.yukle();
     notifyListeners();
     return {'geri_yuklendi': true, 'anahtar': yazilan, 'surum': surum};
   }
