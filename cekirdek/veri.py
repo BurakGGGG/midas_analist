@@ -64,11 +64,18 @@ def _derinlikler() -> dict:
 
 
 def _derinlik_yaz(sembol: str, gun: int) -> None:
+    """Bu sembolün SON indirilişinde kaç gün istendiğini kaydeder.
+
+    "En derin istek" değil "son istek": kayıt, dosyanın İÇİNDEKİ veriyi
+    tarif etmeli. En büyüğü tutsaydı, daha sığ bir indirme dosyayı
+    kısalttıktan sonra kayıt hâlâ derin görünür ve sığ veri derin
+    sanılırdı.
+    """
     import json
     try:
         d = _derinlikler()
         anahtar = sade_kod(sembol)
-        if int(d.get(anahtar, 0)) >= gun:
+        if int(d.get(anahtar, -1)) == int(gun):
             return
         d[anahtar] = int(gun)
         DERINLIK_KAYDI.parent.mkdir(parents=True, exist_ok=True)
@@ -76,6 +83,17 @@ def _derinlik_yaz(sembol: str, gun: int) -> None:
                                   encoding="utf-8")
     except Exception:
         pass    # kayıt tutulamazsa yalnızca performans kaybı olur
+
+
+def _mevcut_derinlik(yol: Path) -> int:
+    """Önbellekteki serinin kaç gün geriye gittiği. Yoksa 0."""
+    try:
+        df = pd.read_pickle(yol)
+        if df is None or df.empty:
+            return 0
+        return max(0, (datetime.now() - df.index[0].to_pydatetime()).days)
+    except Exception:
+        return 0
 
 
 def _taze_mi(yol: Path, azami_saat: float,
@@ -178,6 +196,14 @@ def fiyat_cek(
             return pd.read_pickle(yol)
         except Exception:
             pass  # bozuk önbellek -> yeniden çek
+
+    # ELİMİZDEKİ GEÇMİŞİ KISALTMA. Önbellek bayatladığında yeniden
+    # indirmek dosyanın üzerine YALNIZCA istenen derinlikle yazıyor.
+    # Günlük iş 750 gün istiyor, simülatör 1300; ikisi sırayla
+    # çalışınca her gün birbirinin geçmişini kırpıyor ve simülatörün
+    # ilk çağrısı 100 hisse için iki dakikaya çıkıyordu.
+    gun = max(gun, _mevcut_derinlik(yol))
+    baslangic = datetime.now() - timedelta(days=gun)
 
     try:
         kod = sembol.strip().upper() if ham else yf_kodu(sembol)
