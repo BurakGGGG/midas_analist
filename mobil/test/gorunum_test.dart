@@ -44,8 +44,6 @@ import 'package:midas_analist/servis/api.dart';
 import 'package:midas_analist/ekran/kilit.dart';
 import 'package:midas_analist/ekran/sermaye.dart';
 import 'package:midas_analist/ekran/sozluk.dart';
-import 'package:midas_analist/ekran/alistirma.dart';
-import 'package:midas_analist/servis/alistirma.dart' show kum, KumHavuzu;
 import 'package:midas_analist/servis/egitmen.dart' show egitmen;
 import 'package:midas_analist/servis/kilit.dart' show kilit;
 import 'package:midas_analist/parca/kart.dart';
@@ -206,57 +204,6 @@ class _SahteApi extends Api {
   @override
   Future<Map<String, dynamic>> risk({required double sermaye}) async =>
       _ikili('risk');
-
-  @override
-  Future<Map<String, dynamic>> alistirmaGorevler() async => {
-        'surum': 1,
-        'baslangic_bakiye': 10000.0,
-        'gorevler': [
-          {
-            'kod': 'g03', 'tur': 'sayi',
-            'baslik': 'Stop: nereden çıkacağını önceden söylemek',
-            'amac': 'Stopu duyguya değil oynaklığa göre koymak.',
-            'anlatim': 'STOP, "buraya gelirse yanıldığımı kabul ediyorum" '
-                'dediğin fiyat. Alımdan ÖNCE konur, çünkü sonra konamaz: '
-                'fiyat düşerken her seviye "biraz daha bekleyeyim" gibi '
-                'görünür.\n\nNereye konur? Hissenin NORMAL GÜNLÜK '
-                'DALGALANMASININ DIŞINA. Bunu ölçen sayı ATR.',
-            'soru': 'GESAN 92,20 ₺\'den aldın. ATR 3,70 ₺. Stopu 2 ATR '
-                'altına koyarsan kaç lira olur?',
-            'dogru': 84.80, 'tolerans': 0.10, 'birim': '₺',
-            'ipucu': 'giriş − (2 × ATR)',
-            'aciklama': '92,20 − 7,40 = 84,80 ₺.',
-            'ders': 'd805', 'secenekler': [],
-          },
-          {
-            'kod': 'g04', 'tur': 'secim',
-            'baslik': 'Tavanda açan hisseyi geç',
-            'amac': 'Alınamayacak bir sinyali tanımak.',
-            'anlatim': 'BIST\'te bir hisse günde en fazla ~%20 hareket '
-                'edebilir. Tavana vurmuş hissede SATICI YOKTUR.',
-            'soru': 'Dün 100,00 ₺ kapanan hisse bugün 121,00 ₺ açtı. '
-                'Ne yaparsın?',
-            'secenekler': [
-              'Bu emri geçerim — tavanda satıcı yok',
-              'Piyasa emriyle hemen alırım',
-              'Stopu yukarı taşıyıp yine alırım',
-            ],
-            'dogru': 0, 'birim': '', 'ipucu': '121 ÷ 100 kaç eder?',
-            'aciklama': '%21 yukarıda açmış, tavanın üstünde.',
-            'ders': 'd104',
-          },
-          {
-            'kod': 'g05', 'tur': 'islem',
-            'baslik': 'İlk alımını yap',
-            'amac': 'Dört sayıyı gerçek bir emirde birleştirmek.',
-            'anlatim': 'Şimdi kum havuzunda gerçekten alım yapacaksın. '
-                'Sanal para, gerçek fiyat, gerçek kurallar.',
-            'soru': 'Kum havuzunda bir alım yap.',
-            'secenekler': [], 'birim': '', 'ipucu': '',
-            'aciklama': 'Alım kaydedildi.', 'ders': 'd1201',
-          },
-        ],
-      };
 
   @override
   Future<Map<String, dynamic>> alistirmaGun(String sembol,
@@ -591,71 +538,6 @@ void main() {
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('gorunum/portfoy.png'));
-  });
-
-  // ── alıştırma ────────────────────────────────────────────────────────────
-  // Üç hâli de ayrı ayrı çiziliyor: başlangıç soruları, görev kartı ve
-  // bitiş kutlaması. Bu ekranın önceki halinde cevap kutusu kapalı
-  // geliyordu ve hata ancak telefonda fark edildi.
-
-  Future<void> kumKur(Map<String, dynamic> j) async {
-    SharedPreferences.setMockInitialValues(
-        j.isEmpty ? {} : {KumHavuzu.anahtar: jsonEncode(j)});
-    await depo.yukle();
-    await kum.yukle();
-  }
-
-  testWidgets('alistirma_baslangic', (t) async {
-    await kumKur({});
-    Depo.apiUretici = _SahteApi.new;
-    addTearDown(() => Depo.apiUretici = null);
-    await t.binding.setSurfaceSize(const Size(420, 1250));
-    await t.pumpWidget(_sarmala(const AlistirmaEkran()));
-    await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('gorunum/alistirma_baslangic.png'));
-  });
-
-  testWidgets('alistirma_gorev', (t) async {
-    await kumKur({
-      'mod': 'gecmis', 'rehber': 'rehberli', 'tarih': '2026-05-01',
-      'bakiye': 10000.0, 'pozisyonlar': [], 'kapali': [],
-      'gorevler': ['g03'], 'puan': 10,
-      'rozetler': ['ilk_adim'], 'denemeler': {'g03': 1},
-    });
-    Depo.apiUretici = _SahteApi.new;
-    addTearDown(() => Depo.apiUretici = null);
-    await t.binding.setSurfaceSize(const Size(420, 2000));
-    await t.pumpWidget(_sarmala(const AlistirmaEkran()));
-    await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('gorunum/alistirma_gorev.png'));
-  });
-
-  testWidgets('alistirma_bitis', (t) async {
-    await kumKur({
-      'mod': 'gecmis', 'rehber': 'rehberli', 'tarih': '2026-06-02',
-      'bakiye': 10420.0, 'pozisyonlar': [],
-      'kapali': [
-        {'sembol': 'GESAN', 'adet': 20, 'giris': 92.2, 'cikis': 110.7,
-         'girisTarih': '2026-05-04', 'cikisTarih': '2026-05-19',
-         'sebep': 'hedef'},
-        {'sembol': 'THYAO', 'adet': 4, 'giris': 312.0, 'cikis': 296.4,
-         'girisTarih': '2026-05-20', 'cikisTarih': '2026-05-27',
-         'sebep': 'stop'},
-      ],
-      'gorevler': ['g03', 'g04', 'g05'],
-      'puan': 26, 'rozetler': ['ilk_adim', 'yarim_yol', 'mezun',
-          'ilk_islem', 'ilk_kar', 'ilk_stop'],
-      'denemeler': {'g03': 1, 'g04': 2, 'g05': 1},
-    });
-    Depo.apiUretici = _SahteApi.new;
-    addTearDown(() => Depo.apiUretici = null);
-    await t.binding.setSurfaceSize(const Size(420, 1900));
-    await t.pumpWidget(_sarmala(const AlistirmaEkran()));
-    await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp),
-        matchesGoldenFile('gorunum/alistirma_bitis.png'));
   });
 
   // ── Sanal İşlem ──────────────────────────────────────────────────────────

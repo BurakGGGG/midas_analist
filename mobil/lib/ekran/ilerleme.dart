@@ -5,7 +5,7 @@ import '../parca/kart.dart';
 import '../tema.dart';
 import 'ogret.dart';
 import 'mufredat.dart';
-import 'alistirma.dart';
+import 'sanal.dart';
 
 class IlerlemeEkran extends StatefulWidget {
   const IlerlemeEkran({super.key});
@@ -297,10 +297,10 @@ class _IlerlemeDurum extends State<IlerlemeEkran> {
               // eğitimin ayrı bir iş gibi durmasını engelliyor.
               OutlinedButton.icon(
                 onPressed: () => Navigator.push(c,
-                        MaterialPageRoute(builder: (_) => const AlistirmaEkran()))
+                        MaterialPageRoute(builder: (_) => const SanalEkran()))
                     .then((_) => setState(() {})),
                 icon: const Icon(Icons.science_sharp, size: 18),
-                label: const Text('Alıştırma · sanal parayla dene'),
+                label: const Text('Sanal İşlem · sanal parayla dene'),
                 style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46)),
               ),

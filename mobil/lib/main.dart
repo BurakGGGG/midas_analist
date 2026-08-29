@@ -7,7 +7,6 @@ import 'servis/egitmen.dart';
 import 'servis/hesap.dart';
 import 'servis/kilit.dart';
 import 'servis/push.dart';
-import 'servis/alistirma.dart';
 import 'servis/sanal.dart';
 import 'servis/semboller.dart';
 import 'parca/ipucu.dart';
@@ -24,7 +23,6 @@ Future<void> main() async {
   await hesap.yukle();
   // Kurulu bir PIN varsa uygulama KİLİTLİ açılır.
   await kilit.yukle();
-  await kum.yukle();
   await sanal.yukle();
   await semboller.yukle();
   await ipucu.yukle();
